@@ -1,0 +1,100 @@
+name: Reusable Frappe Packaging Modernization
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  modernize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout app repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout maintenance automation
+        uses: actions/checkout@v4
+        with:
+          repository: Aakvatech-Limited/frappe-maintenance
+          ref: main
+          path: .frappe-maintenance
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Detect Frappe app
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          COUNT=$(find . -mindepth 2 -maxdepth 2 -type f -name hooks.py -not -path './.frappe-maintenance/*' | wc -l)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "Expected exactly one */hooks.py, found $COUNT"
+            exit 1
+          fi
+          echo "app=true" >> "$GITHUB_OUTPUT"
+
+      - name: Modernize packaging
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: python .frappe-maintenance/scripts/modernize_frappe.py
+
+      - name: Validate TOML
+        run: |
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path('pyproject.toml').read_text())
+          print(data['project']['name'])
+          print(data['tool']['bench']['frappe-dependencies'])
+          PY
+
+      - name: Validate package build
+        run: uv build
+
+      - name: Remove maintenance checkout
+        run: rm -rf .frappe-maintenance
+
+      - name: Check whether changes are needed
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet -- pyproject.toml setup.py requirements.txt; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create modernization pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          commit-message: "chore: modernize Frappe packaging"
+          title: "chore: modernize Frappe packaging for ${{ github.ref_name }}"
+          body: |
+            Automated packaging modernization for Pilot/uv compatibility.
+
+            This PR:
+            - creates or normalizes `pyproject.toml`
+            - declares the Frappe major supported by this `version-*` branch
+            - mirrors literal `required_apps` into `[tool.bench.frappe-dependencies]`
+            - replaces legacy executable package metadata in `setup.py` with a minimal setuptools shim
+            - validates the generated TOML and package build
+
+            Please review before merging.
+          branch: automation/modernize-${{ github.ref_name }}
+          delete-branch: true
+          base: ${{ github.ref_name }}
+          labels: automation
