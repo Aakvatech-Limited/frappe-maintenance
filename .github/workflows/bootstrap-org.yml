@@ -1,0 +1,17 @@
+name: Bootstrap Frappe Maintenance Across Organization
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout maintenance repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap eligible Frappe repositories
+        env:
+          GH_TOKEN: ${{ secrets.ORG_MAINTENANCE_TOKEN }}
+          ORG: Aakvatech-Limited
+        run: bash scripts/bootstrap_org.sh
