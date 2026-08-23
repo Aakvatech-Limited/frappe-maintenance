@@ -1,17 +1,29 @@
-name: Bootstrap Frappe Maintenance Across Organization
+name: Mass PR Across Organization
 
 on:
   workflow_dispatch:
+    inputs:
+      config_path:
+        description: Configuration file under this repository
+        required: true
+        default: configs/frappe-maintenance.json
+        type: string
+      dry_run:
+        description: Inspect only; do not create branches, commits, or PRs
+        required: true
+        default: true
+        type: boolean
 
 jobs:
-  bootstrap:
+  mass-pr:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout maintenance repository
         uses: actions/checkout@v4
 
-      - name: Bootstrap eligible Frappe repositories
+      - name: Execute mass PR configuration
         env:
           GH_TOKEN: ${{ secrets.ORG_MAINTENANCE_TOKEN }}
-          ORG: Aakvatech-Limited
+          CONFIG_PATH: ${{ inputs.config_path }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: bash scripts/bootstrap_org.sh
