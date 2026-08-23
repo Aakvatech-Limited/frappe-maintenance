@@ -42,6 +42,13 @@ def slug(value):
     return re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-")
 
 
+def render_text(text, context):
+    rendered = text
+    for key, value in context.items():
+        rendered = rendered.replace("{{" + key + "}}", value)
+    return rendered
+
+
 def load_config(path):
     with open(path, "r", encoding="utf-8") as handle:
         cfg = json.load(handle)
@@ -180,18 +187,30 @@ def put_file(full_repo, target, branch, content, message, existing_sha=None):
     gh_text(args)
 
 
-def apply_files(full_repo, base_branch, work_branch, cfg, dry_run):
+def apply_files(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
     changes = 0
+    context = {
+        "ORG": cfg["organization"],
+        "REPO_NAME": repo_name,
+        "FULL_REPO": full_repo,
+        "BRANCH": base_branch,
+    }
 
     for item in cfg["files"]:
         source = Path(item["source"])
-        target = item["target"]
+        target = render_text(item["target"], context)
         mode = item.get("mode", "create_or_update")
+        render = item.get("render", True)
 
         if not source.is_file():
             raise FileNotFoundError(f"Template not found: {source}")
 
-        desired = source.read_bytes()
+        raw = source.read_bytes()
+        if render:
+            desired = render_text(raw.decode("utf-8"), context).encode("utf-8")
+        else:
+            desired = raw
+
         existing = fetch_file_meta(full_repo, target, work_branch)
 
         if existing is None and mode == "update_only":
@@ -217,14 +236,20 @@ def apply_files(full_repo, base_branch, work_branch, cfg, dry_run):
                 target,
                 work_branch,
                 desired,
-                cfg["commit_message"],
+                render_text(cfg["commit_message"], context),
                 existing_sha=existing.get("sha") if existing else None,
             )
 
     return changes
 
 
-def ensure_pr(full_repo, base_branch, work_branch, cfg, dry_run):
+def ensure_pr(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
+    context = {
+        "ORG": cfg["organization"],
+        "REPO_NAME": repo_name,
+        "FULL_REPO": full_repo,
+        "BRANCH": base_branch,
+    }
     prs = gh_json([
         "pr",
         "list",
@@ -256,9 +281,9 @@ def ensure_pr(full_repo, base_branch, work_branch, cfg, dry_run):
         "--head",
         work_branch,
         "--title",
-        cfg["pr_title"],
+        render_text(cfg["pr_title"], context),
         "--body",
-        cfg["pr_body"],
+        render_text(cfg["pr_body"], context),
     ])
     print(f"    PR created: {url}")
 
@@ -303,9 +328,16 @@ def main():
             print(f"  {branch} -> {work_branch}")
 
             if args.dry_run:
-                changes = apply_files(full_repo, branch, work_branch if branch_exists(full_repo, work_branch) else branch, cfg, True)
+                changes = apply_files(
+                    full_repo,
+                    repo,
+                    branch,
+                    work_branch if branch_exists(full_repo, work_branch) else branch,
+                    cfg,
+                    True,
+                )
                 if changes:
-                    ensure_pr(full_repo, branch, work_branch, cfg, True)
+                    ensure_pr(full_repo, repo, branch, work_branch, cfg, True)
                 else:
                     print("    no changes required")
                 continue
@@ -313,9 +345,9 @@ def main():
             if not branch_exists(full_repo, work_branch):
                 create_branch(full_repo, work_branch, get_ref_sha(full_repo, branch))
 
-            changes = apply_files(full_repo, branch, work_branch, cfg, False)
+            changes = apply_files(full_repo, repo, branch, work_branch, cfg, False)
             if changes:
-                ensure_pr(full_repo, branch, work_branch, cfg, False)
+                ensure_pr(full_repo, repo, branch, work_branch, cfg, False)
             else:
                 print("    no changes required")
 
