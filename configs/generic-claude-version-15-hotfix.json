@@ -1,0 +1,20 @@
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "branch_include_regex": "^version-15-hotfix$",
+  "required_paths": ["*/hooks.py"],
+  "required_paths_mode": "exactly_one_each",
+  "files": [
+    {
+      "source": "templates/frappe-CLAUDE.md",
+      "target": "CLAUDE.md",
+      "mode": "create_or_update",
+      "render": true
+    }
+  ],
+  "work_branch_prefix": "automation/generic-claude-version-15-hotfix",
+  "commit_message": "chore: add generic AI agent guide for {{REPO_NAME}}",
+  "pr_title": "chore: add generic CLAUDE.md agent guide",
+  "pr_body": "Adds a repository-aware, vendor-neutral AI coding agent guide for {{FULL_REPO}} on {{BRANCH}}. The guide is suitable for Claude, ChatGPT, Codex, Copilot, Cursor, and similar tools, and follows generic Frappe/ERPNext development and safety practices without Pilot-specific assumptions."
+}
