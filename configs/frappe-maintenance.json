@@ -1,0 +1,21 @@
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "branch_include_regex": "^(?:[Vv]ersion-(?:14|15|16)(?:-|$)|v(?:14|15|16)(?:-|$))",
+  "required_paths": [
+    "*/hooks.py"
+  ],
+  "required_paths_mode": "exactly_one_each",
+  "files": [
+    {
+      "source": "templates/modernize-frappe.yml",
+      "target": ".github/workflows/modernize-frappe.yml",
+      "mode": "create_or_update"
+    }
+  ],
+  "work_branch_prefix": "automation/bootstrap-frappe-maintenance",
+  "commit_message": "chore: add Frappe maintenance workflow",
+  "pr_title": "chore: add Frappe maintenance workflow",
+  "pr_body": "Adds the organization-managed Frappe packaging modernization workflow. It is manually triggered and opens modernization changes as a PR."
+}
