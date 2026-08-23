@@ -11,10 +11,16 @@
       "target": "CLAUDE.md",
       "mode": "create_or_update",
       "render": true
+    },
+    {
+      "source": "templates/frappe-CLAUDE.md",
+      "target": "AGENTS.md",
+      "mode": "create_or_update",
+      "render": true
     }
   ],
-  "work_branch_prefix": "automation/generic-claude-version-15-hotfix",
-  "commit_message": "chore: add generic AI agent guide for {{REPO_NAME}}",
-  "pr_title": "chore: add generic CLAUDE.md agent guide",
-  "pr_body": "Adds a repository-aware, vendor-neutral AI coding agent guide for {{FULL_REPO}} on {{BRANCH}}. The guide is suitable for Claude, ChatGPT, Codex, Copilot, Cursor, and similar tools, and follows generic Frappe/ERPNext development and safety practices without Pilot-specific assumptions."
+  "work_branch_prefix": "automation/generic-agent-guides-version-15-hotfix",
+  "commit_message": "chore: add generic AI agent guides for {{REPO_NAME}}",
+  "pr_title": "chore: add CLAUDE.md and AGENTS.md agent guides",
+  "pr_body": "Adds repository-aware AI coding agent guidance for {{FULL_REPO}} on {{BRANCH}}. The same source template is written to both CLAUDE.md and AGENTS.md for broad harness compatibility across Claude Code, Codex, GitHub Copilot agents, DeepSeek Harness, and similar coding-agent environments."
 }
