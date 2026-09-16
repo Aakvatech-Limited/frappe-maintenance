@@ -77,6 +77,21 @@ def list_repositories(org):
     ]
 
 
+def select_repositories(repositories, repository=None):
+    if not repository:
+        return repositories
+
+    matches = [repo for repo in repositories if repo["name"] == repository]
+    if matches:
+        return matches
+
+    available = ", ".join(sorted(repo["name"] for repo in repositories))
+    raise ValueError(
+        f"Repository '{repository}' was not found among eligible organization repositories. "
+        f"Available repositories: {available}"
+    )
+
+
 def list_branches(full_repo):
     data = gh_json(["api", "--paginate", f"repos/{full_repo}/branches?per_page=100"]) or []
     return [b["name"] for b in data]
@@ -178,6 +193,10 @@ def ensure_pr(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
 def main():
     parser = argparse.ArgumentParser(description="Create configuration-driven PRs across GitHub organization repositories")
     parser.add_argument("config", help="Path to JSON configuration")
+    parser.add_argument(
+        "--repository",
+        help="Optional exact repository name to process. Omit to process all eligible repositories.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Inspect and report without making changes")
     args = parser.parse_args()
 
@@ -195,9 +214,18 @@ def main():
     required_paths = cfg.get("required_paths", [])
     required_mode = cfg.get("required_paths_mode", "at_least_one_each")
 
-    for repo_info in list_repositories(org):
+    repositories = select_repositories(list_repositories(org), args.repository)
+    if args.repository:
+        print(f"Targeting single repository: {org}/{args.repository}")
+    else:
+        print("No repository selected; processing all eligible repositories")
+
+    for repo_info in repositories:
         repo = repo_info["name"]
         if not repo_include.search(repo) or repo_exclude.search(repo):
+            if args.repository:
+                print(f"== {org}/{repo} ==")
+                print("  skip: repository excluded by configuration")
             continue
         full_repo = f"{org}/{repo}"
         print(f"== {full_repo} ==")
