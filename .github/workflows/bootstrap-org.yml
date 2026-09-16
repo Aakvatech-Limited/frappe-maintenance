@@ -8,6 +8,11 @@ on:
         required: true
         default: configs/frappe-maintenance.json
         type: string
+      repository:
+        description: Optional repository name. Leave blank to process all eligible repositories.
+        required: false
+        default: ""
+        type: string
       dry_run:
         description: Inspect only; do not create branches, commits, or PRs
         required: true
@@ -25,5 +30,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ORG_MAINTENANCE_TOKEN }}
           CONFIG_PATH: ${{ inputs.config_path }}
+          REPOSITORY: ${{ inputs.repository }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: bash scripts/bootstrap_org.sh
