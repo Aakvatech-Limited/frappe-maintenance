@@ -9,10 +9,28 @@ The workflow **Mass PR Across Organization** runs `scripts/mass_pr.py` using a J
 1. Add one or more template files under `templates/`.
 2. Add a JSON file under `configs/`.
 3. Run **Mass PR Across Organization** and select the config path.
-4. Run first with `dry_run=true`.
-5. Re-run with `dry_run=false` to create branches, commits, and PRs.
+4. Optionally enter a repository name to process only that repository. Leave it blank to process all eligible repositories.
+5. Run first with `dry_run=true`.
+6. Re-run with `dry_run=false` to create branches, commits, and PRs.
 
 No new bootstrap script is required for each campaign.
+
+### Repository targeting
+
+The workflow has an optional `repository` input:
+
+- Leave `repository` blank to preserve the existing mass-PR behavior and process all repositories allowed by the selected configuration.
+- Enter one exact repository name, for example `av_tools`, to process only that repository.
+- Repository include/exclude rules in the selected configuration still apply. Selecting a repository does not bypass campaign eligibility rules.
+- An unknown repository name fails fast instead of silently falling back to all repositories.
+
+The same behavior is available from the CLI:
+
+```bash
+python3 scripts/mass_pr.py configs/frappe-maintenance.json --repository av_tools --dry-run
+```
+
+Omit `--repository` to process all eligible repositories.
 
 ### Configuration example
 
