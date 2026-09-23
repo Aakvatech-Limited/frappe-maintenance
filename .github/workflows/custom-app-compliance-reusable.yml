@@ -2,22 +2,18 @@ name: Reusable Custom App Compliance
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 jobs:
   compliance:
+    name: Check custom app compliance
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout app repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Checkout compliance rules
         uses: actions/checkout@v4
@@ -31,88 +27,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Ensure compliance label exists
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
+      - name: Run compliance audit
         run: |
-          set -euo pipefail
-          LABEL=$(python -c "import json; print(json.load(open('.frappe-maintenance/configs/custom-app-compliance.json'))['label']['name'])")
-          COLOR=$(python -c "import json; print(json.load(open('.frappe-maintenance/configs/custom-app-compliance.json'))['label']['color'])")
-          DESCRIPTION=$(python -c "import json; print(json.load(open('.frappe-maintenance/configs/custom-app-compliance.json'))['label']['description'])")
-          gh label create "$LABEL" --repo "${{ github.repository }}" --color "$COLOR" --description "$DESCRIPTION" --force
+          python .frappe-maintenance/scripts/check_custom_app_compliance.py \
+            --root . \
+            --config .frappe-maintenance/configs/custom-app-compliance.json \
+            --json-output custom-app-compliance.json
 
-      - name: Check current pull request
-        if: github.event_name == 'pull_request'
-        id: pr_check
-        shell: bash
-        run: |
-          set +e
-          python .frappe-maintenance/scripts/check_custom_app_compliance.py             --root .             --config .frappe-maintenance/configs/custom-app-compliance.json
-          CODE=$?
-          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
-          exit 0
-
-      - name: Reconcile current pull request label
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          EXIT_CODE: ${{ steps.pr_check.outputs.exit_code }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          LABEL=$(python -c "import json; print(json.load(open('.frappe-maintenance/configs/custom-app-compliance.json'))['label']['name'])")
-          if [ "$EXIT_CODE" -eq 0 ]; then
-            gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "$LABEL" 2>/dev/null || true
-          else
-            gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --add-label "$LABEL"
-          fi
-
-      - name: Fail non-compliant pull request
-        if: github.event_name == 'pull_request' && steps.pr_check.outputs.exit_code != '0'
-        run: |
-          echo "Custom app compliance failed. See the job summary for missing artifacts."
-          exit 1
-
-      - name: Monthly/manual reconciliation of all open pull requests
-        if: github.event_name != 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          LABEL=$(python -c "import json; print(json.load(open('.frappe-maintenance/configs/custom-app-compliance.json'))['label']['name'])")
-          FAILED=0
-          COUNT=0
-
-          while IFS=$'\t' read -r PR_NUMBER HEAD_SHA; do
-            [ -n "$PR_NUMBER" ] || continue
-            COUNT=$((COUNT + 1))
-            WORKDIR="/tmp/custom-app-compliance-pr-$PR_NUMBER"
-
-            rm -rf "$WORKDIR"
-            git fetch --no-tags origin "pull/$PR_NUMBER/head"
-            git worktree add --detach "$WORKDIR" FETCH_HEAD >/dev/null
-
-            echo "## PR #$PR_NUMBER" >> "$GITHUB_STEP_SUMMARY"
-
-            if python .frappe-maintenance/scripts/check_custom_app_compliance.py               --root "$WORKDIR"               --config .frappe-maintenance/configs/custom-app-compliance.json; then
-              gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "$LABEL" 2>/dev/null || true
-            else
-              gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --add-label "$LABEL"
-              FAILED=1
-            fi
-
-            git worktree remove --force "$WORKDIR" >/dev/null
-          done < <(gh pr list --repo "${{ github.repository }}" --state open --limit 1000 --json number,headRefOid --jq '.[] | [.number, .headRefOid] | @tsv')
-
-          if [ "$COUNT" -eq 0 ]; then
-            echo "No open pull requests to reconcile." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [ "$FAILED" -ne 0 ]; then
-            echo "One or more open pull requests are not custom-app compliant."
-            exit 1
-          fi
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: custom-app-compliance-report
+          path: custom-app-compliance.json
+          if-no-files-found: ignore
