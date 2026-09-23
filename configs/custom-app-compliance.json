@@ -1,0 +1,15 @@
+{
+  "label": {
+    "name": "custom-app-compliance-failed",
+    "color": "D73A4A",
+    "description": "Custom Frappe app is missing one or more required UI/reporting artifacts"
+  },
+  "required_artifacts": [
+    {"key":"workspace","name":"Workspace","min_count":1,"path_segments":["workspace"],"doctypes":["Workspace"]},
+    {"key":"report","name":"Report","min_count":1,"path_segments":["report"],"doctypes":["Report"]},
+    {"key":"dashboard","name":"Dashboard","min_count":1,"path_segments":["dashboard"],"doctypes":["Dashboard"]},
+    {"key":"dashboard_chart","name":"Dashboard Chart","min_count":1,"path_segments":["dashboard_chart"],"doctypes":["Dashboard Chart"]},
+    {"key":"number_card","name":"Number Card","min_count":1,"path_segments":["number_card"],"doctypes":["Number Card"]}
+  ],
+  "ignored_directories":[".git",".frappe-maintenance","node_modules","env",".venv","venv","dist","build"]
+}
