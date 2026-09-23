@@ -1,0 +1,19 @@
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "default_branch_only": true,
+  "required_paths": ["*/hooks.py"],
+  "required_paths_mode": "exactly_one_each",
+  "files": [
+    {
+      "source": "templates/workflows/custom-app-compliance.yml",
+      "target": ".github/workflows/custom-app-compliance.yml",
+      "mode": "create_or_update"
+    }
+  ],
+  "work_branch_prefix": "automation/custom-app-compliance",
+  "commit_message": "chore: add custom app compliance workflow",
+  "pr_title": "chore: add custom app compliance workflow",
+  "pr_body": "Adds the centrally managed custom Frappe app compliance workflow. It checks every pull request and reconciles all open pull requests monthly for Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts. Non-compliant PRs are labeled custom-app-compliance-failed, and the label is removed automatically after compliance is restored."
+}
