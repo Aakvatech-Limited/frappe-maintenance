@@ -1,0 +1,17 @@
+name: Custom App Compliance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "17 2 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  compliance:
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@main
