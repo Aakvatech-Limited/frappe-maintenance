@@ -1,9 +1,4 @@
 {
-  "label": {
-    "name": "custom-app-compliance-failed",
-    "color": "D73A4A",
-    "description": "Custom Frappe app is missing one or more required UI/reporting artifacts"
-  },
   "required_artifacts": [
     {"key":"workspace","name":"Workspace","min_count":1,"path_segments":["workspace"],"doctypes":["Workspace"]},
     {"key":"report","name":"Report","min_count":1,"path_segments":["report"],"doctypes":["Report"]},
