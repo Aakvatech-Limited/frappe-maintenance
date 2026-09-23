@@ -13,7 +13,7 @@
     }
   ],
   "work_branch_prefix": "automation/custom-app-compliance",
-  "commit_message": "chore: add custom app compliance workflow",
-  "pr_title": "chore: add custom app compliance workflow",
-  "pr_body": "Adds the centrally managed custom Frappe app compliance workflow. It checks every pull request and reconciles all open pull requests monthly for Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts. Non-compliant PRs are labeled custom-app-compliance-failed, and the label is removed automatically after compliance is restored."
+  "commit_message": "chore: add manual custom app compliance workflow",
+  "pr_title": "chore: add manual custom app compliance workflow",
+  "pr_body": "Adds the centrally managed manual custom Frappe app compliance audit. Run Custom App Compliance from the Actions tab when an app needs to be reviewed. The audit reports whether Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts are present."
 }

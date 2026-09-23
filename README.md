@@ -87,9 +87,10 @@ Managed changes include:
 The modernization script is designed to preserve existing `pyproject.toml` content where possible and only add or repair required sections.
 
 
+
 ## Custom Frappe App Compliance
 
-The custom app compliance system verifies that every managed Frappe application contains at least one of each required operational UI/reporting artifact:
+The custom app compliance system verifies that a managed Frappe application contains at least one of each required operational UI/reporting artifact:
 
 - Workspace
 - Report
@@ -99,40 +100,41 @@ The custom app compliance system verifies that every managed Frappe application 
 
 The centrally maintained rules live in `configs/custom-app-compliance.json`, and the scanner lives in `scripts/check_custom_app_compliance.py`.
 
-Each Frappe application receives only the lightweight caller workflow from `templates/workflows/custom-app-compliance.yml`. That workflow calls the reusable workflow in this repository, so new compliance rules can normally be introduced centrally without rewriting the compliance logic in every application repository.
+Each Frappe application receives only the lightweight caller workflow from `templates/workflows/custom-app-compliance.yml`. That workflow calls the reusable workflow in this repository, so future compliance criteria can normally be changed centrally without rewriting every app repository.
 
-### Pull request behavior
+### Manual audit behavior
 
-On every pull request open, update, reopen, or transition to ready-for-review, the workflow scans the full PR head.
+The compliance workflow runs only when a user manually selects **Actions → Custom App Compliance → Run workflow** in the application repository.
 
-If any required artifact is missing:
+There are no pull-request triggers, no schedule, and no compliance labels.
 
-- the workflow fails,
-- the job summary identifies each missing requirement,
-- the pull request receives the label `custom-app-compliance-failed`.
+The audit:
 
-When the PR becomes compliant, the label is removed automatically.
+- scans the checked-out branch for the configured required artifacts;
+- writes a pass/fail matrix to the GitHub Actions job summary;
+- fails the workflow when one or more required artifacts are missing;
+- uploads a machine-readable `custom-app-compliance-report` JSON artifact.
 
-To find outstanding custom-app compliance issues across the organization, search GitHub pull requests for:
-
-```
-org:Aakvatech-Limited is:pr is:open label:custom-app-compliance-failed
-```
-
-### Monthly reconciliation
-
-The caller workflow runs on the first day of every month and reconciles all open pull requests in that repository. This catches old PRs, rule changes, and compliance drift. It also supports manual execution with `workflow_dispatch`.
-
-The current schedule is `17 2 1 * *` (02:17 UTC on the first day of each month).
+A green workflow run means all currently configured compliance requirements were found. A failed run shows the missing requirements in the Actions summary.
 
 ### Organization rollout
 
-Use the existing **Mass PR Across Organization** workflow with:
+Use the existing **Mass PR Across Organization** workflow in this repository with:
 
 ```
 configs/custom-app-compliance-workflow.json
 ```
 
-Run in dry-run mode first, then run with writes enabled. Eligible repositories are detected by the presence of exactly one `*/hooks.py`.
+Recommended rollout:
 
-Because the compliance criteria are configuration-driven, future requirements can be added to `configs/custom-app-compliance.json` and immediately consumed by all repositories already using the centrally managed reusable workflow.
+1. Run the mass-PR workflow with `dry_run=true`.
+2. Review which repositories are detected as eligible Frappe apps.
+3. Run it again with `dry_run=false`.
+4. The automation creates one PR in each eligible repository adding:
+   `.github/workflows/custom-app-compliance.yml`
+5. Review and merge those PRs.
+6. After merge, each repository will show **Custom App Compliance** in its Actions tab and it can be run manually.
+
+Eligible repositories are currently detected by the presence of exactly one `*/hooks.py`.
+
+Because the caller workflow points to `Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@main`, future rule changes in the central repository are picked up automatically by all repositories that already have the caller workflow.
