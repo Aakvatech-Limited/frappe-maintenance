@@ -85,3 +85,54 @@ Managed changes include:
 - packaging validation with `uv`
 
 The modernization script is designed to preserve existing `pyproject.toml` content where possible and only add or repair required sections.
+
+
+## Custom Frappe App Compliance
+
+The custom app compliance system verifies that every managed Frappe application contains at least one of each required operational UI/reporting artifact:
+
+- Workspace
+- Report
+- Dashboard
+- Dashboard Chart
+- Number Card
+
+The centrally maintained rules live in `configs/custom-app-compliance.json`, and the scanner lives in `scripts/check_custom_app_compliance.py`.
+
+Each Frappe application receives only the lightweight caller workflow from `templates/workflows/custom-app-compliance.yml`. That workflow calls the reusable workflow in this repository, so new compliance rules can normally be introduced centrally without rewriting the compliance logic in every application repository.
+
+### Pull request behavior
+
+On every pull request open, update, reopen, or transition to ready-for-review, the workflow scans the full PR head.
+
+If any required artifact is missing:
+
+- the workflow fails,
+- the job summary identifies each missing requirement,
+- the pull request receives the label `custom-app-compliance-failed`.
+
+When the PR becomes compliant, the label is removed automatically.
+
+To find outstanding custom-app compliance issues across the organization, search GitHub pull requests for:
+
+```
+org:Aakvatech-Limited is:pr is:open label:custom-app-compliance-failed
+```
+
+### Monthly reconciliation
+
+The caller workflow runs on the first day of every month and reconciles all open pull requests in that repository. This catches old PRs, rule changes, and compliance drift. It also supports manual execution with `workflow_dispatch`.
+
+The current schedule is `17 2 1 * *` (02:17 UTC on the first day of each month).
+
+### Organization rollout
+
+Use the existing **Mass PR Across Organization** workflow with:
+
+```
+configs/custom-app-compliance-workflow.json
+```
+
+Run in dry-run mode first, then run with writes enabled. Eligible repositories are detected by the presence of exactly one `*/hooks.py`.
+
+Because the compliance criteria are configuration-driven, future requirements can be added to `configs/custom-app-compliance.json` and immediately consumed by all repositories already using the centrally managed reusable workflow.
