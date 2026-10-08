@@ -3,7 +3,9 @@
   "repository_include_regex": ".*",
   "repository_exclude_regex": "^frappe-maintenance$",
   "default_branch_only": true,
-  "required_paths": ["*/hooks.py"],
+  "required_paths": [
+    "*/hooks.py"
+  ],
   "required_paths_mode": "exactly_one_each",
   "files": [
     {
@@ -19,6 +21,11 @@
     {
       "source": "templates/workflows/linter.yml",
       "target": ".github/workflows/linter.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/no-raw-sql.yml",
+      "target": ".github/workflows/no-raw-sql.yml",
       "mode": "create_or_update"
     },
     {
@@ -45,5 +52,5 @@
   "work_branch_prefix": "automation/sync-standard-workflows",
   "commit_message": "chore: sync standard GitHub workflows",
   "pr_title": "chore: sync standard GitHub workflows",
-  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion."
+  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package."
 }
