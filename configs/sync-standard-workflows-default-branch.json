@@ -14,6 +14,11 @@
       "mode": "create_or_update"
     },
     {
+      "source": "templates/workflows/custom-app-compliance.yml",
+      "target": ".github/workflows/custom-app-compliance.yml",
+      "mode": "create_or_update"
+    },
+    {
       "source": "templates/workflows/label-failed-prs.yml",
       "target": ".github/workflows/label-failed-prs.yml",
       "mode": "create_or_update"
@@ -52,5 +57,5 @@
   "work_branch_prefix": "automation/sync-standard-workflows",
   "commit_message": "chore: sync standard GitHub workflows",
   "pr_title": "chore: sync standard GitHub workflows",
-  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package."
+  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package. Also includes Custom App Compliance so all eight workflows currently present in av_tools are covered by the standard sync."
 }
