@@ -52,10 +52,20 @@
       "source": "templates/workflows/tag-and-promote-from-pr-label.yml",
       "target": ".github/workflows/tag-and-promote-from-pr-label.yml",
       "mode": "create_or_update"
+    },
+    {
+      "source": "templates/editorconfig",
+      "target": ".editorconfig",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/eslintrc",
+      "target": ".eslintrc",
+      "mode": "create_or_update"
     }
   ],
   "work_branch_prefix": "automation/sync-standard-workflows",
   "commit_message": "chore: sync standard GitHub workflows",
   "pr_title": "chore: sync standard GitHub workflows",
-  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package. Also includes Custom App Compliance so all eight workflows currently present in av_tools are covered by the standard sync."
+  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package. Also includes Custom App Compliance so all standard workflows are covered by the sync. Also syncs the standard `.editorconfig` and `.eslintrc`."
 }
