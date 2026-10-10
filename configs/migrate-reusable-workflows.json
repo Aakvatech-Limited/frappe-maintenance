@@ -2,7 +2,7 @@
   "organization": "Aakvatech-Limited",
   "repository_include_regex": ".*",
   "repository_exclude_regex": "^frappe-maintenance$",
-  "default_branch_only": true,
+  "default_branch_only": false,
   "required_paths": [
     "*/hooks.py"
   ],
@@ -54,10 +54,12 @@
       "mode": "create_or_update"
     }
   ],
-  "work_branch_prefix": "automation/sync-standard-workflows",
+  "work_branch_prefix": "automation/central-workflow-callers",
   "commit_message": "chore: use central reusable workflows",
   "pr_title": "chore: use central reusable workflows",
   "pr_body": "Replaces copied workflow implementations with lightweight callers to frappe-maintenance@stable. Event triggers and permissions remain local; routine implementation updates are published centrally without further app PRs. Review required check names after the first run. Requires the central stable branch to be published before merging.",
+  "include_default_branch": true,
+  "branch_include_regex": "^version-\\d+(?:-hotfix)?$",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
     "ref": "stable"

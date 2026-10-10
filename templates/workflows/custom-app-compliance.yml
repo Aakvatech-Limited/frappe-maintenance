@@ -8,4 +8,6 @@ permissions:
 
 jobs:
   compliance:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@main
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@stable
+    with:
+      maintenance-ref: stable

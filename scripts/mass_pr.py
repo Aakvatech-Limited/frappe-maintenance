@@ -59,6 +59,9 @@ def load_config(path):
     if not isinstance(cfg.get("default_branch_only", False), bool):
         raise ValueError("default_branch_only must be a boolean")
 
+    if not isinstance(cfg.get("include_default_branch", False), bool):
+        raise ValueError("include_default_branch must be a boolean")
+
     for item in cfg["files"]:
         if not item.get("source") or not item.get("target"):
             raise ValueError("Each files entry requires source and target")
@@ -97,9 +100,32 @@ def list_branches(full_repo):
     return [b["name"] for b in data]
 
 
+def branch_matches_config(branch, default_branch, cfg):
+    """Include the default branch when requested, but always honor exclusions."""
+    is_default = cfg.get("include_default_branch", False) and branch == default_branch
+    included = is_default or re.search(cfg.get("branch_include_regex", ".*"), branch)
+    excluded = re.search(cfg.get("branch_exclude_regex", r"$^"), branch)
+    return bool(included and not excluded)
+
+
 def tree_paths(full_repo, branch):
     data = gh_json(["api", f"repos/{full_repo}/git/trees/{branch}?recursive=1"]) or {}
     return [item.get("path", "") for item in data.get("tree", [])]
+
+
+def check_workflow_source(cfg):
+    """Fail before creating app branches when the central channel is not ready."""
+    source = cfg.get("required_workflow_source")
+    if not source:
+        return
+    repository, ref = source["repository"], source["ref"]
+    available = set(tree_paths(repository, ref))
+    for item in cfg["files"]:
+        text = Path(item["source"]).read_text(encoding="utf-8")
+        pattern = re.escape(repository) + r"/(\.github/workflows/[^@\s]+)@" + re.escape(ref) + r"(?=\s|$)"
+        for workflow in re.findall(pattern, text):
+            if workflow not in available:
+                raise ValueError(f"Central workflow {workflow}@{ref} is missing in {repository}; publish stable first")
 
 
 def path_requirements_match(paths, patterns, mode):
@@ -205,11 +231,10 @@ def main():
         return 2
 
     cfg = load_config(args.config)
+    check_workflow_source(cfg)
     org = cfg["organization"]
     repo_include = re.compile(cfg.get("repository_include_regex", ".*"))
     repo_exclude = re.compile(cfg.get("repository_exclude_regex", r"$^"))
-    branch_include = re.compile(cfg.get("branch_include_regex", ".*"))
-    branch_exclude = re.compile(cfg.get("branch_exclude_regex", r"$^"))
     default_branch_only = cfg.get("default_branch_only", False)
     required_paths = cfg.get("required_paths", [])
     required_mode = cfg.get("required_paths_mode", "at_least_one_each")
@@ -240,7 +265,7 @@ def main():
             branches = list_branches(full_repo)
 
         for branch in branches:
-            if not branch_include.search(branch) or branch_exclude.search(branch):
+            if not branch_matches_config(branch, repo_info.get("default_branch"), cfg):
                 continue
             paths = tree_paths(full_repo, branch)
             matched, details = path_requirements_match(paths, required_paths, required_mode)

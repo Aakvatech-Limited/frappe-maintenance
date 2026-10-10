@@ -1,0 +1,62 @@
+name: Publish stable workflows
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full 40-character SHA already merged into main and tested in the pilot
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-stable
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/validate-workflows.yml
+    with:
+      ref: ${{ inputs.commit }}
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify promotion source
+        env:
+          CANDIDATE: ${{ inputs.commit }}
+        run: |
+          [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]] || { echo 'A full commit SHA is required'; exit 1; }
+          git merge-base --is-ancestor "$CANDIDATE" HEAD
+      - name: Publish approved commit
+        uses: actions/github-script@v8
+        env:
+          CANDIDATE: ${{ inputs.commit }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = process.env.CANDIDATE;
+            let exists = true;
+            try {
+              await github.rest.git.getRef({ owner, repo, ref: 'heads/stable' });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              exists = false;
+            }
+            if (exists) {
+              await github.rest.git.updateRef({ owner, repo, ref: 'heads/stable', sha, force: false });
+            } else {
+              await github.rest.git.createRef({ owner, repo, ref: 'refs/heads/stable', sha });
+            }
+            await core.summary.addHeading('Stable workflows published')
+              .addRaw(`Commit: ${sha}\n\nApp repositories use this version on their next triggered run.`).write();

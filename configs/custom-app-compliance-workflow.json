@@ -3,7 +3,9 @@
   "repository_include_regex": ".*",
   "repository_exclude_regex": "^frappe-maintenance$",
   "default_branch_only": true,
-  "required_paths": ["*/hooks.py"],
+  "required_paths": [
+    "*/hooks.py"
+  ],
   "required_paths_mode": "exactly_one_each",
   "files": [
     {
@@ -15,5 +17,9 @@
   "work_branch_prefix": "automation/custom-app-compliance",
   "commit_message": "chore: add manual custom app compliance workflow",
   "pr_title": "chore: add manual custom app compliance workflow",
-  "pr_body": "Adds the centrally managed manual custom Frappe app compliance audit. Run Custom App Compliance from the Actions tab when an app needs to be reviewed. The audit reports whether Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts are present."
+  "pr_body": "Adds the centrally managed manual custom Frappe app compliance audit. Run Custom App Compliance from the Actions tab when an app needs to be reviewed. The audit reports whether Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts are present.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
 }
