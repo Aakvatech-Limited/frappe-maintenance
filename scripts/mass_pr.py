@@ -59,13 +59,29 @@ def load_config(path):
     if not isinstance(cfg.get("default_branch_only", False), bool):
         raise ValueError("default_branch_only must be a boolean")
 
+    if not isinstance(cfg.get("include_default_branch", False), bool):
+        raise ValueError("include_default_branch must be a boolean")
+
     for item in cfg["files"]:
-        if not item.get("source") or not item.get("target"):
-            raise ValueError("Each files entry requires source and target")
-        if item.get("mode", "create_or_update") not in {"create_only", "update_only", "create_or_update"}:
-            raise ValueError("Unsupported file mode: " + item.get("mode", ""))
+        mode = item.get("mode", "create_or_update")
+        if mode not in {"create_only", "update_only", "create_or_update", "delete"}:
+            raise ValueError("Unsupported file mode: " + mode)
+        if not item.get("target"):
+            raise ValueError("Each files entry requires target")
+        if mode == "delete":
+            validate_delete_target(item["target"])
+        elif not item.get("source"):
+            raise ValueError("Non-delete files entries require source and target")
 
     return cfg
+
+
+def validate_delete_target(target):
+    """Deletion accepts explicit repository-relative file paths, never patterns."""
+    if not isinstance(target, str) or any(part in {"", ".", ".."} for part in target.split("/")):
+        raise ValueError("Delete target must be an explicit repository-relative file path")
+    if any(char in target for char in "*?[]\\"):
+        raise ValueError("Delete target cannot contain glob patterns or backslashes")
 
 
 def list_repositories(org):
@@ -97,9 +113,34 @@ def list_branches(full_repo):
     return [b["name"] for b in data]
 
 
+def branch_matches_config(branch, default_branch, cfg):
+    """Include the default branch when requested, but always honor exclusions."""
+    is_default = cfg.get("include_default_branch", False) and branch == default_branch
+    included = is_default or re.search(cfg.get("branch_include_regex", ".*"), branch)
+    excluded = re.search(cfg.get("branch_exclude_regex", r"$^"), branch)
+    return bool(included and not excluded)
+
+
 def tree_paths(full_repo, branch):
     data = gh_json(["api", f"repos/{full_repo}/git/trees/{branch}?recursive=1"]) or {}
     return [item.get("path", "") for item in data.get("tree", [])]
+
+
+def check_workflow_source(cfg):
+    """Fail before creating app branches when the central channel is not ready."""
+    source = cfg.get("required_workflow_source")
+    if not source:
+        return
+    repository, ref = source["repository"], source["ref"]
+    available = set(tree_paths(repository, ref))
+    for item in cfg["files"]:
+        if item.get("mode") == "delete":
+            continue
+        text = Path(item["source"]).read_text(encoding="utf-8")
+        pattern = re.escape(repository) + r"/(\.github/workflows/[^@\s]+)@" + re.escape(ref) + r"(?=\s|$)"
+        for workflow in re.findall(pattern, text):
+            if workflow not in available:
+                raise ValueError(f"Central workflow {workflow}@{ref} is missing in {repository}; publish stable first")
 
 
 def path_requirements_match(paths, patterns, mode):
@@ -134,8 +175,15 @@ def create_branch(full_repo, branch, sha):
 def fetch_file_meta(full_repo, target, branch):
     result = run(["gh", "api", f"repos/{full_repo}/contents/{target}?ref={branch}"], check=False)
     if result.returncode != 0:
-        return None
+        if "HTTP 404" in result.stderr:
+            return None
+        raise RuntimeError(f"Could not inspect {full_repo}/{target}@{branch}: {result.stderr.strip()}")
     return json.loads(result.stdout)
+
+
+def delete_file(full_repo, target, branch, message, existing_sha):
+    gh_text(["api", "-X", "DELETE", f"repos/{full_repo}/contents/{target}",
+             "-f", f"message={message}", "-f", f"sha={existing_sha}", "-f", f"branch={branch}"])
 
 
 def put_file(full_repo, target, branch, content, message, existing_sha=None):
@@ -149,9 +197,22 @@ def apply_files(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
     changes = 0
     context = {"ORG": cfg["organization"], "REPO_NAME": repo_name, "FULL_REPO": full_repo, "BRANCH": base_branch}
     for item in cfg["files"]:
-        source = Path(item["source"])
         target = render_text(item["target"], context)
         mode = item.get("mode", "create_or_update")
+        if mode == "delete":
+            validate_delete_target(target)
+            existing = fetch_file_meta(full_repo, target, work_branch)
+            if existing is None:
+                print(f"    skip {target}: delete and file does not exist")
+                continue
+            if not isinstance(existing, dict) or existing.get("type") != "file" or not existing.get("sha"):
+                raise ValueError(f"Delete target is not a regular file: {target}")
+            changes += 1
+            print(f"    delete {target}")
+            if not dry_run:
+                delete_file(full_repo, target, work_branch, render_text(cfg["commit_message"], context), existing["sha"])
+            continue
+        source = Path(item["source"])
         render = item.get("render", True)
         if not source.is_file():
             raise FileNotFoundError(f"Template not found: {source}")
@@ -205,11 +266,10 @@ def main():
         return 2
 
     cfg = load_config(args.config)
+    check_workflow_source(cfg)
     org = cfg["organization"]
     repo_include = re.compile(cfg.get("repository_include_regex", ".*"))
     repo_exclude = re.compile(cfg.get("repository_exclude_regex", r"$^"))
-    branch_include = re.compile(cfg.get("branch_include_regex", ".*"))
-    branch_exclude = re.compile(cfg.get("branch_exclude_regex", r"$^"))
     default_branch_only = cfg.get("default_branch_only", False)
     required_paths = cfg.get("required_paths", [])
     required_mode = cfg.get("required_paths_mode", "at_least_one_each")
@@ -240,7 +300,7 @@ def main():
             branches = list_branches(full_repo)
 
         for branch in branches:
-            if not branch_include.search(branch) or branch_exclude.search(branch):
+            if not branch_matches_config(branch, repo_info.get("default_branch"), cfg):
                 continue
             paths = tree_paths(full_repo, branch)
             matched, details = path_requirements_match(paths, required_paths, required_mode)

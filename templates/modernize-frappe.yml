@@ -9,4 +9,6 @@ permissions:
 
 jobs:
   modernize:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/modernize-frappe-reusable.yml@main
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/modernize-frappe-reusable.yml@stable
+    with:
+      maintenance-ref: stable
