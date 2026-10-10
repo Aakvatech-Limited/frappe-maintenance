@@ -65,7 +65,7 @@ class WorkflowContracts(unittest.TestCase):
         for path in (ROOT / 'configs').glob('*.json'):
             config = json.loads(path.read_text())
             for item in config.get('files', []):
-                if item['target'].startswith('.github/workflows/'):
+                if item.get('mode') != 'delete' and item['target'].startswith('.github/workflows/'):
                     caller = read_yaml(ROOT / item['source'])
                     self.assertTrue(all('uses' in job and 'steps' not in job
                                         for job in caller['jobs'].values()))

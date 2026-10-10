@@ -113,6 +113,43 @@ Omit `--repository` to process all eligible repositories.
 - `create_only`: skip repositories where the target already exists.
 - `update_only`: skip repositories where the target does not exist.
 - `create_or_update`: create missing files and update differing files.
+- `delete`: delete an explicitly named file if present; skip it if already absent. No `source` is required. Deletions are committed only on the campaign work branch and reviewed in its PR.
+
+Creation, replacement and deletion entries can be mixed in the same campaign. A deletion-only campaign is also supported. For example, add this entry to `files` to remove an obsolete workflow:
+
+```json
+{
+  "target": ".github/workflows/obsolete-ci.yml",
+  "mode": "delete"
+}
+```
+
+This is an example path, not an enabled cleanup rule. The workflow migration does not guess which repository-specific files are obsolete.
+
+A complete deletion-only cleanup campaign can look like this:
+
+```json
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "default_branch_only": true,
+  "files": [
+    {
+      "target": ".github/workflows/obsolete-ci.yml",
+      "mode": "delete"
+    }
+  ],
+  "work_branch_prefix": "automation/cleanup-obsolete-workflows",
+  "commit_message": "chore: remove obsolete workflow",
+  "pr_title": "chore: remove obsolete workflow",
+  "pr_body": "Removes the explicitly listed obsolete workflow."
+}
+```
+
+Save the configuration under `configs/`, then select it in **Mass PR Across Organization**. Choose one repository first and inspect with `dry_run=true` before creating its cleanup PR. For a mixed campaign, include normal create/update entries alongside deletion entries in the same `files` list.
+
+Dry runs print `delete <path>` without writing anything. Missing files print a skip message and do not count as changes. The deletion uses the file's current blob SHA and the campaign work branch; a concurrent file change causes the GitHub request to fail. Inspection errors other than HTTP 404 fail the campaign rather than being treated as missing files. Targets must be explicit repository-relative file paths: directories, glob patterns, absolute paths and parent traversal are rejected. A source-readiness preflight, when configured, ignores deletion entries; deletion-only cleanup configs can omit `required_workflow_source`.
 
 ### Required path modes
 
