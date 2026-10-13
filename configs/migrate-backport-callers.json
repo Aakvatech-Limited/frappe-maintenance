@@ -1,0 +1,27 @@
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "include_default_branch": true,
+  "branch_include_regex": "^version-\\d+(?:-hotfix)?$",
+  "branch_exclude_regex": "",
+  "required_paths": [
+    "*/hooks.py"
+  ],
+  "required_paths_mode": "exactly_one_each",
+  "files": [
+    {
+      "source": "templates/workflows/backport.yml",
+      "target": ".github/workflows/backport.yml",
+      "mode": "create_or_update"
+    }
+  ],
+  "work_branch_prefix": "automation/central-backport-caller",
+  "commit_message": "ci: use centrally maintained backport workflow",
+  "pr_title": "ci: migrate backport to frappe-maintenance reusable workflow",
+  "pr_body": "Replace the standalone Backport implementation with a lightweight caller to Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@stable. Preserves pull_request_target closed/labeled triggers and permissions. Central PR #9 attempt reporting becomes available only after the approved central commit is published to stable. Review status check contexts and Actions policies before merging.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
+}
