@@ -49,7 +49,7 @@ jobs:
           auto_merge_enabled: ${{ contains(join(github.event.pull_request.labels.*.name, ','), 'backport-auto-merge') }}
 
       - name: Record target outcomes
-        if: ${{ always( }})
+        if: ${{ always() }}
         uses: actions/github-script@v7
         id: report
         env:
@@ -111,7 +111,7 @@ jobs:
             core.info(JSON.stringify(payload));
 
       - name: Upload backport outcomes
-        if: ${{ always( }} && steps.report.outcome == 'success')
+        if: ${{ always() && steps.report.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: backport-results
