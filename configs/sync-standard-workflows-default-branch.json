@@ -52,6 +52,16 @@
       "source": "templates/workflows/tag-and-promote-from-pr-label.yml",
       "target": ".github/workflows/tag-and-promote-from-pr-label.yml",
       "mode": "create_or_update"
+    },
+    {
+      "source": "templates/editorconfig",
+      "target": ".editorconfig",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/eslintrc",
+      "target": ".eslintrc",
+      "mode": "create_or_update"
     }
   ],
   "work_branch_prefix": "automation/sync-standard-workflows",
