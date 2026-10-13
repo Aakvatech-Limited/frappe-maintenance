@@ -1,0 +1,64 @@
+name: Backport Reconciliation
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Historical lookback in days (1-730)
+        required: false
+        default: '90'
+        type: string
+      repository:
+        description: Optional single app repository (for a pilot)
+        required: false
+        type: string
+      dry_run:
+        description: Preview without creating/updating Issues
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: '15 5 * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: central-backport-reconciliation
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile expected backports
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require organization access token
+        env:
+          MONITOR_TOKEN: ${{ secrets.BACKPORT_MONITOR_TOKEN }}
+        run: |
+          if [ -z "$MONITOR_TOKEN" ]; then
+            echo "::error::Configure BACKPORT_MONITOR_TOKEN with org-repository read and frappe-maintenance Issues write access."
+            exit 1
+          fi
+      - name: Scan labeled merged PRs and reconcile exceptions
+        env:
+          BACKPORT_MONITOR_TOKEN: ${{ secrets.BACKPORT_MONITOR_TOKEN }}
+          LOOKBACK_DAYS: ${{ inputs.days || '90' }}
+          TARGET_REPOSITORY: ${{ inputs.repository || '' }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+        run: |
+          args=(--days "$LOOKBACK_DAYS")
+          if [ -n "$TARGET_REPOSITORY" ]; then args+=(--repo "$TARGET_REPOSITORY"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 scripts/reconcile_backports.py "${args[@]}"
+      - name: Publish audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backport-reconciliation
+          path: backport-reconciliation.json
+          if-no-files-found: ignore
+          retention-days: 90

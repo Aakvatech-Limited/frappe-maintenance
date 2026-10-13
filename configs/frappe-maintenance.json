@@ -17,5 +17,9 @@
   "work_branch_prefix": "automation/bootstrap-frappe-maintenance",
   "commit_message": "chore: add Frappe maintenance workflow",
   "pr_title": "chore: add Frappe maintenance workflow",
-  "pr_body": "Adds the organization-managed Frappe packaging modernization workflow. It is manually triggered and opens modernization changes as a PR."
+  "pr_body": "Adds the organization-managed Frappe packaging modernization workflow. It is manually triggered and opens modernization changes as a PR.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
 }

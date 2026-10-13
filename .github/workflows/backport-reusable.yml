@@ -1,0 +1,119 @@
+name: Reusable Backport
+
+on:
+  workflow_call:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  backport:
+    name: Backport PR
+    if: >
+      github.event.pull_request.merged == true
+      && contains(join(github.event.pull_request.labels.*.name, ','), 'backport-to-')
+      && (
+        github.event.action == 'closed'
+        || (
+          github.event.action == 'labeled'
+          && startsWith(github.event.label.name, 'backport-to-')
+        )
+      )
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create backport PR(s)
+        id: backport_action
+        uses: korthout/backport-action@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          label_pattern: "^backport-to-(.+)$"
+          merge_commits: "skip"
+          pull_title: "[Backport ${target_branch}] ${pull_title}"
+          pull_description: |
+            Backport of #${pull_number} to `${target_branch}`.
+
+            ---
+
+            ${pull_description}
+          copy_requested_reviewers: true
+          copy_assignees: true
+          copy_labels_pattern: "^(?!backport-to-)"
+          auto_merge_enabled: ${{ contains(join(github.event.pull_request.labels.*.name, ','), 'backport-auto-merge') }}
+
+      - name: Record target outcomes
+        if: ${{ always() }}
+        uses: actions/github-script@v7
+        id: report
+        env:
+          TARGET_RESULTS: ${{ steps.backport_action.outputs.was_successful_by_target }}
+          CREATED_PULL_NUMBERS: ${{ steps.backport_action.outputs.created_pull_numbers }}
+          ACTION_OUTCOME: ${{ steps.backport_action.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const targets = [...new Set(pr.labels.map(l => l.name).filter(n => /^backport-to-.+$/.test(n)).map(n => n.substring(12)))];
+            const results = new Map();
+            for (const m of (process.env.TARGET_RESULTS || '').matchAll(/(backport-to-[^\s,;=]+)=(true|false)/g)) {
+              results.set(m[1].substring(12), m[2] === 'true');
+            }
+            const numbers = [...new Set((process.env.CREATED_PULL_NUMBERS || '').match(/\d+/g) || [])].map(Number);
+            const linked = {};
+            for (const number of numbers) {
+              try {
+                const { data } = await github.rest.pulls.get({owner, repo, pull_number: number});
+                if (targets.includes(data.base.ref)) (linked[data.base.ref] ||= []).push({number, url:data.html_url});
+              } catch (e) { core.warning('Backport PR #' + number + ': ' + e.message); }
+            }
+            const records = targets.map(target => {
+              const success = results.get(target);
+              const backport_prs = linked[target] || [];
+              const status = success === false ? 'cherry_pick_failed'
+                : success === true ? (backport_prs.length ? 'pr_created' : 'attempt_succeeded_no_pr')
+                : process.env.ACTION_OUTCOME === 'failure' ? 'action_failed' : 'unknown';
+              return {target, success: success ?? null, status, backport_prs};
+            });
+            const run_url = process.env.GITHUB_SERVER_URL + '/' + owner + '/' + repo + '/actions/runs/' + context.runId;
+            const payload = {schema_version:1, repository:owner+'/'+repo, source_pr:pr.number,
+              source_url:pr.html_url, source_merge_sha:pr.merge_commit_sha, run_url,
+              action_outcome:process.env.ACTION_OUTCOME,
+              raw_target_results:process.env.TARGET_RESULTS || '', created_pull_numbers:numbers, targets:records};
+            fs.writeFileSync('backport-results.json', JSON.stringify(payload, null, 2) + '\n');
+            await core.summary.addHeading('Backport results by target', 2).addTable([
+              [{data:'Target',header:true},{data:'Attempt status',header:true},{data:'Created PR',header:true}],
+              ...records.map(r => [r.target,r.status,r.backport_prs.map(p => '#'+p.number).join(', ') || '—'])
+            ]).write();
+            const exceptions = records.filter(r => ['cherry_pick_failed','action_failed','unknown'].includes(r.status));
+            if (exceptions.length) {
+              const marker = '<!-- aakvatech-backport-target-report -->';
+              const body = [marker,'### Backport attempt exceptions','',
+                ...exceptions.map(r => '- ' + r.target + ': **' + r.status + '**'),
+                '', 'Run: ' + run_url,
+                '', 'Created backport PRs still require merging. This report does not establish branch completion.'].join('\n');
+              let previous;
+              for await (const page of github.paginate.iterator(github.rest.issues.listComments,
+                {owner,repo,issue_number:pr.number,per_page:100})) {
+                previous = page.data.find(c => c.body?.includes(marker) && c.user?.type === 'Bot');
+                if (previous) break;
+              }
+              if (previous) await github.rest.issues.updateComment({owner,repo,comment_id:previous.id,body});
+              else await github.rest.issues.createComment({owner,repo,issue_number:pr.number,body});
+            }
+            core.info(JSON.stringify(payload));
+
+      - name: Upload backport outcomes
+        if: ${{ always() && steps.report.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backport-results
+          path: backport-results.json
+          retention-days: 90

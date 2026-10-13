@@ -13,5 +13,9 @@
   "work_branch_prefix": "automation/label-failed-prs",
   "commit_message": "chore: add failed PR action labeling",
   "pr_title": "chore: add failed PR action labeling",
-  "pr_body": "Adds the organization-managed workflow that labels open pull requests with `action-failed` when pull-request GitHub Actions fail, and removes the label after the current PR head has no failed runs. The workflow can also be run manually to reconcile all open PRs."
+  "pr_body": "Adds the organization-managed workflow that labels open pull requests with `action-failed` when pull-request GitHub Actions fail, and removes the label after the current PR head has no failed runs. The workflow can also be run manually to reconcile all open PRs.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
 }

@@ -65,7 +65,11 @@
     }
   ],
   "work_branch_prefix": "automation/sync-standard-workflows",
-  "commit_message": "chore: sync standard GitHub workflows",
-  "pr_title": "chore: sync standard GitHub workflows",
-  "pr_body": "Synchronizes the centrally managed Aakvatech GitHub Actions workflows from `frappe-maintenance` onto this repository's default branch. The campaign is idempotent and uses repository-agnostic Frappe app discovery for linting and release promotion. Includes a no-raw-SQL check on pull requests, pushes, and manual dispatch, rejecting frappe.db.sql, frappe.db.multisql, and db.sql calls in the Frappe app package. Also includes Custom App Compliance so all standard workflows are covered by the sync. Also syncs the standard `.editorconfig` and `.eslintrc`."
+  "commit_message": "chore: use central reusable workflows",
+  "pr_title": "chore: use central reusable workflows",
+  "pr_body": "Replaces copied workflow implementations with lightweight callers to frappe-maintenance@stable. Event triggers and permissions remain local; routine implementation updates are published centrally without further app PRs. Review required check names after the first run. Requires the central stable branch to be published before merging.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
 }
