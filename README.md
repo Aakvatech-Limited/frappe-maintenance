@@ -2,6 +2,51 @@
 
 Central GitHub Actions implementations for `Aakvatech-Limited` Frappe apps. App repositories keep small caller workflows; approved implementation changes are published here and adopted on their next triggered run. Mass PRs are used for initial onboarding and caller interface changes.
 
+## Recent updates: backport visibility and standard configuration (October 2026)
+
+The latest ten commits on `main` (through [8622f45](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/8622f453bf6561e850cfeaf74d9c9dce912f3ae2)) introduce two backport-control enhancements and standardized project configuration. This section documents **current implementation**, not a guarantee that every app has deployed the latest central `stable` ref.
+
+### Per-target backport attempt reporting (PR [#9](https://github.com/Aakvatech-Limited/frappe-maintenance/pull/9))
+
+The reusable [backport workflow](.github/workflows/backport-reusable.yml) continues to honor `backport-to-<branch>` labels and use `korthout/backport-action@v4`. Each run now also:
+
+- Records one outcome for each requested target, including `cherry_pick_failed`, `pr_created`, `attempt_succeeded_no_pr`, `action_failed` and `unknown`.
+- Shows a per-target table in the GitHub Actions run summary.
+- Uploads a `backport-results` artifact containing `backport-results.json` (90-day retention).
+- Posts or updates a marked exception comment on the original PR for failed or unknown attempts.
+
+**A created backport PR is not evidence that it was merged.** Attempt results do not independently prove that changes reached the destination branch. See [backport reporting details](docs/backport-reporting.md).
+
+### Organization-wide reconciliation and historical exceptions (PR [#10](https://github.com/Aakvatech-Limited/frappe-maintenance/pull/10))
+
+The central [Backport Reconciliation workflow](.github/workflows/backport-reconciliation.yml) runs daily at **05:15 UTC** and supports manual `workflow_dispatch` audits. It scans merged source PRs carrying `backport-to-*` labels and evaluates each requested target branch independently. The audit:
+
+- Creates or updates an exception Issue in **this repository**, keyed by source repository, PR number and target branch.
+- Classifies a linked **merged** backport PR as `completed`, an open linked PR as `awaiting_merge`, and absent evidence as `unverified`.
+- Closes an existing exception Issue only when linked merged-PR evidence is found.
+- Exports the `backport-reconciliation.json` audit artifact.
+- Supports a specific `repository`, `days` lookback (1–730), and `dry_run`; manual invocations default to dry-run.
+
+**Initial setup (required):**
+
+1. Create a fine-grained token with pull-request read access to the monitored organization repositories, and Issues read/write access to `frappe-maintenance`. Ensure its repository selection covers every intended repository and complete any required organization approval.
+2. In [frappe-maintenance → Settings → Secrets and variables → Actions](https://github.com/Aakvatech-Limited/frappe-maintenance/settings/secrets/actions), add the repository secret `BACKPORT_MONITOR_TOKEN`. Do not commit or paste the token into workflow files.
+3. Create the `backport-exception` Issue label in this repository.
+4. In [Actions](https://github.com/Aakvatech-Limited/frappe-maintenance/actions), manually run **Backport Reconciliation** with `repository=av_tools`, `days=90`, `dry_run=true`. Review the log and uploaded JSON before allowing writes.
+5. Repeat with `dry_run=false` for a pilot, then run without a repository filter to inspect organization coverage. Scheduled runs use the configured token and update Issues automatically.
+
+**Important limits:** This is a conservative exception register, not a full git-content equivalence verifier. A manually cherry-picked fix with no linked backport PR can remain `unverified`. Searches are bounded by update timestamps, configured history window, and pagination; very old backports may be omitted. Missing linked evidence does **not** itself establish that a cherry-pick conflict occurred. See [backport reconciliation details](docs/backport-reconciliation.md).
+
+### Organization-wide EditorConfig and ESLint defaults (PR [#7](https://github.com/Aakvatech-Limited/frappe-maintenance/pull/7))
+
+The `configs/sync-standard-workflows-default-branch.json` campaign now distributes `templates/editorconfig` and `templates/eslintrc` as `.editorconfig` and `.eslintrc` alongside the standard workflow callers. The campaign targets **default branches only**, recognizes eligible Frappe apps using exactly one `*/hooks.py`, and uses `create_or_update` (so existing files may be replaced through reviewable PRs). Inspect app-specific formatting/lint choices before merging.
+
+From **Actions → Mass PR Across Organization**, use `configs/sync-standard-workflows-default-branch.json`, first with `repository=av_tools` and `dry_run=true`; review the pilot PR before organization-wide distribution. This campaign does not automatically rewrite maintained version branches.
+
+### Commit coverage
+
+This README update reviewed the ten latest commits on `main` as of 13 October 2026: [8622f45](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/8622f453bf6561e850cfeaf74d9c9dce912f3ae2), [7d77ac8](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/7d77ac81e0fea1827251c9e8ce315013b54fb58a), [a2f314b](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/a2f314bc91a4815ab6f2df85c37533964179d74b), [1508f01](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/1508f01f1ae817377c492c8811df8168bca168aa), [92e092e](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/92e092e2dbe0c9a2509034ebfa785840cb63d9ce), [2e59e42](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/2e59e4297286a21cb2ee63cfda603473fc733d41), [100b727](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/100b7275262e76bc645fd181ed8f2496efc2e030), [e3c6f3b](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/e3c6f3b1f614be2aeea2942e2f56fb86bee43cf4), [e9540b1](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/e9540b147bfca6246725dcb86214f8713968061d), and [edc373d](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/edc373d46415fff7d3ef69748d83f1894c78dcd1).
+
 ## Shared workflows and stable publication
 
 All nine templates in `templates/workflows/` are callers. The implementations live in `.github/workflows/*-reusable.yml` and declare `workflow_call`. Existing workflow names, triggers, internal job names, release labels and branch checks are retained. Failed-run labeling now explicitly watches all workflow names except itself, as required by GitHub's `workflow_run` configuration.
