@@ -208,6 +208,26 @@ Dry runs print `delete <path>` without writing anything. Missing files print a s
 
 Workflow campaigns declare `required_workflow_source`; the engine checks that the central ref and referenced workflows exist before creating any application branches or PRs.
 
+### Focused backport-caller migration (PR 3)
+
+For repositories still containing their own `.github/workflows/backport.yml`,
+use `configs/migrate-backport-callers.json` in **Mass PR Across Organization**.
+Unlike `configs/migrate-reusable-workflows.json`, this campaign changes **only**
+the Backport workflow and leaves every other CI workflow intact.
+
+Start with `repository=av_tools`, `dry_run=true`; verify the resulting target
+branches and the `stable` reusable workflow source. Repeat with
+`dry_run=false` to create reviewable PRs, then remove the repository selector
+for other eligible Frappe apps. The campaign includes default branches and
+`version-N` / `version-N-hotfix` branches. All app PRs must be reviewed and
+merged; running the campaign alone does not deploy its changes.
+
+**Before rollout:** publish an approved central commit containing backport
+attempt reporting to the `stable` channel, check repository Actions permission
+to call reusable workflows and create PRs, and validate required status-check
+contexts in a pilot. Backport reconciler setup remains centralized in
+`frappe-maintenance` and does not need a per-app scheduled workflow.
+
 ### Existing Frappe maintenance campaign
 
 `configs/frappe-maintenance.json` distributes `templates/modernize-frappe.yml` to eligible Frappe version branches as `.github/workflows/modernize-frappe.yml`.
