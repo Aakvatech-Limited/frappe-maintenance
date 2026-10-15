@@ -60,12 +60,47 @@ jobs:
             --config r/python.lang.security \
             --severity=ERROR --error "${baseline_args[@]}" "${{ steps.app.outputs.app_dir }}"
 
-      - name: Semgrep warnings (non-blocking)
-        if: always()
+      - name: Full Semgrep evidence report
+        id: full_scan
+        shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p audit-artifacts
           semgrep scan --config ./frappe-semgrep-rules/rules \
             --config r/python.lang.security \
-            --severity=WARNING "${{ steps.app.outputs.app_dir }}" || true
+            --json --output audit-artifacts/semgrep-full.json \
+            "${{ steps.app.outputs.app_dir }}"
+          python - <<'PY'
+          import json
+          import os
+          from collections import Counter
+
+          with open("audit-artifacts/semgrep-full.json", encoding="utf-8") as report:
+              payload = json.load(report)
+          findings = payload.get("results", [])
+          if not isinstance(findings, list):
+              raise SystemExit("Semgrep report missing results list")
+          counts = Counter(
+              finding.get("extra", {}).get("severity", "UNKNOWN")
+              for finding in findings
+          )
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## Frappe Semgrep baseline evidence\\n\\n")
+              summary.write(f"Total findings: **{len(findings)}**\\n\\n")
+              for severity, count in sorted(counts.items()):
+                  summary.write(f"- {severity}: {count}\\n")
+              summary.write("\\nFull finding-level JSON is attached as a workflow artifact. "
+                            "A passing differential scan does not close historical findings.\\n")
+          PY
+
+      - name: Upload Semgrep findings
+        if: always() && steps.full_scan.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-finding-evidence
+          path: audit-artifacts/semgrep-full.json
+          if-no-files-found: error
+          retention-days: 90
 
   deps-vulnerable-check:
     name: Vulnerable Dependency Check
