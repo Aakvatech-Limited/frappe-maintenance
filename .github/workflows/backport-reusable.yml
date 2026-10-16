@@ -74,29 +74,89 @@ jobs:
                 if (targets.includes(data.base.ref)) (linked[data.base.ref] ||= []).push({number, url:data.html_url});
               } catch (e) { core.warning('Backport PR #' + number + ': ' + e.message); }
             }
+            // Diagnose failed targets in disposable Git worktrees. Never alter the caller checkout.
+            const {spawnSync} = require('child_process');
+            const os = require('os');
+            const path = require('path');
+            const diagnostics = {};
+            const git = (args, cwd) => spawnSync('git', args, {
+              cwd, encoding:'utf8', timeout:120000, maxBuffer:1024*1024
+            });
+            const failedTargets = targets.filter(t => results.get(t) === false);
+            if (failedTargets.length) {
+              let commits = [];
+              try {
+                commits = await github.paginate(github.rest.pulls.listCommits,
+                  {owner,repo,pull_number:pr.number,per_page:100});
+              } catch (e) { core.warning('Cannot retrieve source commits: ' + e.message); }
+              for (const target of failedTargets) {
+                const d = {status:'unavailable', failed_commit:null, conflicts:[], operation:null, error:null};
+                diagnostics[target] = d;
+                if (!commits.length || commits.length > 100) {
+                  d.error = 'Source commits missing or exceed diagnostic limit (100)';
+                  continue;
+                }
+                const baseDir = fs.mkdtempSync(path.join(os.tmpdir(),'backport-diagnostic-'));
+                const worktree = path.join(baseDir, 'tree');
+                try {
+                  const fetch = git(['fetch','--no-tags','origin','refs/heads/'+target+':refs/remotes/origin/'+target],
+                    process.env.GITHUB_WORKSPACE);
+                  if (fetch.status !== 0) throw Error('fetch: ' + (fetch.stderr || '').slice(-1000));
+                  const create = git(['worktree','add','--detach',worktree,'refs/remotes/origin/'+target],
+                    process.env.GITHUB_WORKSPACE);
+                  if (create.status !== 0) throw Error('worktree: ' + (create.stderr || '').slice(-1000));
+                  d.status = 'clean_replay';
+                  for (const item of commits) {
+                    // Backport action skips merge commits; retain the same behavior here.
+                    const parents = git(['rev-list','--parents','-n','1',item.sha], worktree);
+                    if (parents.status !== 0) throw Error('rev-list: ' + (parents.stderr || '').slice(-1000));
+                    if (parents.stdout.trim().split(/\s+/).length > 2) continue;
+                    const apply = git(['cherry-pick','--no-commit',item.sha], worktree);
+                    if (apply.status !== 0) {
+                      d.status = 'conflict_reproduced';
+                      d.failed_commit = item.sha;
+                      d.operation = 'cherry-pick';
+                      const unmerged = git(['diff','--name-only','--diff-filter=U'], worktree);
+                      d.conflicts = unmerged.status === 0 ? unmerged.stdout.trim().split('\n').filter(Boolean).slice(0,50) : [];
+                      const porcelain = git(['status','--porcelain'], worktree);
+                      d.changed_paths = porcelain.status === 0 ? porcelain.stdout.trim().split('\n').filter(Boolean).slice(0,50) : [];
+                      d.error = (apply.stderr || apply.stdout || '').slice(-1800);
+                      break;
+                    }
+                  }
+                } catch (e) {
+                  d.status = 'diagnostic_error';
+                  d.error = String(e.message || e).slice(0,1800);
+                } finally {
+                  git(['cherry-pick','--abort'],worktree);
+                  git(['worktree','remove','--force',worktree],process.env.GITHUB_WORKSPACE);
+                  fs.rmSync(baseDir,{recursive:true,force:true});
+                }
+              }
+            }
             const records = targets.map(target => {
               const success = results.get(target);
               const backport_prs = linked[target] || [];
               const status = success === false ? 'cherry_pick_failed'
                 : success === true ? (backport_prs.length ? 'pr_created' : 'attempt_succeeded_no_pr')
                 : process.env.ACTION_OUTCOME === 'failure' ? 'action_failed' : 'unknown';
-              return {target, success: success ?? null, status, backport_prs};
+              return {target, success: success ?? null, status, backport_prs, diagnostic:diagnostics[target] || null};
             });
             const run_url = process.env.GITHUB_SERVER_URL + '/' + owner + '/' + repo + '/actions/runs/' + context.runId;
-            const payload = {schema_version:1, repository:owner+'/'+repo, source_pr:pr.number,
+            const payload = {schema_version:2, repository:owner+'/'+repo, source_pr:pr.number,
               source_url:pr.html_url, source_merge_sha:pr.merge_commit_sha, run_url,
               action_outcome:process.env.ACTION_OUTCOME,
               raw_target_results:process.env.TARGET_RESULTS || '', created_pull_numbers:numbers, targets:records};
             fs.writeFileSync('backport-results.json', JSON.stringify(payload, null, 2) + '\n');
             await core.summary.addHeading('Backport results by target', 2).addTable([
-              [{data:'Target',header:true},{data:'Attempt status',header:true},{data:'Created PR',header:true}],
-              ...records.map(r => [r.target,r.status,r.backport_prs.map(p => '#'+p.number).join(', ') || '—'])
+              [{data:'Target',header:true},{data:'Attempt status',header:true},{data:'Failed commit',header:true},{data:'Conflict files',header:true},{data:'Created PR',header:true}],
+              ...records.map(r => [r.target,r.status,r.diagnostic?.failed_commit?.slice(0,12) || '—',r.diagnostic?.conflicts?.join(', ') || r.diagnostic?.status || '—',r.backport_prs.map(p => '#'+p.number).join(', ') || '—'])
             ]).write();
             const exceptions = records.filter(r => ['cherry_pick_failed','action_failed','unknown'].includes(r.status));
             if (exceptions.length) {
               const marker = '<!-- aakvatech-backport-target-report -->';
               const body = [marker,'### Backport attempt exceptions','',
-                ...exceptions.map(r => '- ' + r.target + ': **' + r.status + '**'),
+                ...exceptions.flatMap(r => [ '- ' + r.target + ': **' + r.status + '**', ...(r.diagnostic ? ['  - Diagnostic: ' + r.diagnostic.status, ...(r.diagnostic.failed_commit ? ['  - Failed commit: `'+r.diagnostic.failed_commit+'`'] : []), ...(r.diagnostic.conflicts?.length ? ['  - Conflicting paths: '+r.diagnostic.conflicts.map(p=>'`'+p.replaceAll('`','')+'`').join(', ')] : []), ...(r.diagnostic.error ? ['  - Git diagnostic: '+r.diagnostic.error.replaceAll('\\n',' ').slice(0,350)] : [])] : []) ]),
                 '', 'Run: ' + run_url,
                 '', 'Created backport PRs still require merging. This report does not establish branch completion.'].join('\n');
               let previous;
