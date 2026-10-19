@@ -297,3 +297,11 @@ Recommended rollout:
 Eligible repositories are currently detected by the presence of exactly one `*/hooks.py`.
 
 The caller uses `custom-app-compliance-reusable.yml@stable`. Future rules are adopted after the approved central commit is published to `stable`.
+
+## Frappe Cloud audit evidence in centralized CI
+
+The reusable `linter-reusable.yml` runs an existing differential Semgrep error gate and a **full-repository finding export**. It uploads `semgrep-finding-evidence/semgrep-full.json` (90-day retention) and writes severity totals to the Actions job summary. Unlike a PR-only differential check, the full export includes pre-existing findings, enabling source-to-finding reconciliation after each bulk remediation.
+
+**Rollout:** Merge the central PR to `main`, pilot an app caller pointing at `@main`, publish the approved commit to `stable` through **Publish stable workflows**, then allow app repositories already calling `@stable` to use it. Local copied workflows, such as those in `csf_tz`, do not inherit this improvement until migrated to the reusable caller.
+
+The JSON is a new-scan snapshot, **not** the missing original 497-finding report. Capture the original baseline separately. Missing scanner installations or missing artifacts fail the workflow rather than being treated as zero findings. This automation generates reports; it does not automatically change application code or fix old findings.
