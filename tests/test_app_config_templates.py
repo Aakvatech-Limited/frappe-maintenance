@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import tomllib
@@ -68,8 +69,12 @@ class OtherTemplates(unittest.TestCase):
     def test_commitlint_config_is_valid_javascript(self):
         subprocess.run(['node', '--check', TEMPLATES / 'commitlint.config.js'], check=True)
 
-    def test_setup_script_syntax(self):
-        subprocess.run(['bash', '-n', TEMPLATES / 'setup-git-hooks.sh'], check=True)
+    def test_linked_templates_have_no_placeholders(self):
+        # Apps link these files as they are, so campaign placeholders would never be filled.
+        files = json.loads((ROOT / 'configs/app-config-files.json').read_text())['files']
+        for item in files:
+            with self.subTest(source=item['source']):
+                self.assertNotIn('{{', (ROOT / item['source']).read_text())
 
 
 if __name__ == '__main__':
