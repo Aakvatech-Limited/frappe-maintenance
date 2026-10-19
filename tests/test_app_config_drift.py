@@ -55,7 +55,7 @@ class AppConfigDrift(unittest.TestCase):
     def test_delete_entry_must_be_absent(self):
         with tempfile.TemporaryDirectory() as temp:
             app = synced_app(temp)
-            Path(app, '.github/workflows').mkdir(parents=True)
+            Path(app, '.github/workflows').mkdir(parents=True, exist_ok=True)
             Path(app, '.github/workflows/old.yml').write_text('name: old\n')
             config = json.loads(CONFIG.read_text())
             config['files'].append({'target': '.github/workflows/old.yml', 'mode': 'delete'})
