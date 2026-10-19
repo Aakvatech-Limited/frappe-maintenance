@@ -15,8 +15,8 @@ run_required_checks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(run_required_checks)
 
 CHECKS = [
-    {'workflow': 'pre-commit.yml', 'accepts_base_sha': True},
-    {'workflow': 'linter.yml', 'accepts_base_sha': False},
+    {'workflow': 'pre-commit.yml', 'context': 'shared / pre-commit', 'accepts_base_sha': True},
+    {'workflow': 'linter.yml', 'context': 'shared / Vulnerable Dependency Check', 'accepts_base_sha': False},
 ]
 
 
