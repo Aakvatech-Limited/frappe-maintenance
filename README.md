@@ -66,6 +66,17 @@ All ten templates in `templates/workflows/` are callers. The implementations liv
 
 Callers retain triggers and minimum token permissions. The central jobs receive the app's event context and `GITHUB_TOKEN` automatically; no organization token or `secrets: inherit` is needed for these calls. Backport/modernization still require the app's Actions setting to allow GitHub Actions to create pull requests. Required branch protections still apply to release commits. Organization Actions policy must allow the central workflows and their actions.
 
+### Required checks on release and backport commits
+
+Pushes and pull requests made with `GITHUB_TOKEN` start no workflows. For apps in `configs/central-ci-apps.json`, the workflows start the checks in `configs/required-checks.json` with `workflow_dispatch` instead:
+
+| Workflow | Behavior |
+| --- | --- |
+| Tag and promote | Pushes the bump commit to `release/bump-<tag>`, runs the required checks on it and waits up to 30 minutes. Then it pushes the same commit to the target branch, deletes the temporary branch and creates the tag. If a check fails or the target branch moved, nothing reaches the target branch; rerun the workflow. |
+| Backport | Starts the required checks on each created backport PR and does not wait. |
+
+Pre-commit, Semgrep and Semantic Commits accept an optional `base-sha` input, so a started check looks only at the new commits. The release commit subject is `chore(release): bump to version X.Y.Z`. Earlier releases with `Bumped to Version` are still detected. Callers of tag and promote and backport need `actions: write`.
+
 Concurrency is defined only in the implementation. Caller and callee share `github.workflow`, so repeating cancellation groups in both can cancel the calling run.
 
 ### One-time rollout

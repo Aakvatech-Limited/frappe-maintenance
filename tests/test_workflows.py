@@ -43,7 +43,7 @@ class WorkflowContracts(unittest.TestCase):
             'linter': {'pull_request', 'workflow_dispatch'},
             'semgrep': {'pull_request', 'workflow_dispatch'},
             'pre-commit': {'pull_request', 'workflow_dispatch'},
-            'semantic-commits': {'pull_request'},
+            'semantic-commits': {'pull_request', 'workflow_dispatch'},
             'no-raw-sql': {'pull_request', 'push', 'workflow_dispatch'},
             'modernize-frappe': {'workflow_dispatch'},
             'custom-app-compliance': {'workflow_dispatch'},

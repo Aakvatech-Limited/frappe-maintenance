@@ -2,12 +2,17 @@ name: Reusable Semantic Commits
 
 on:
   workflow_call:
+    inputs:
+      base-sha:
+        description: Check only changes after this commit. Pull requests use their base commit.
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: commitcheck-${{ github.repository }}-${{ github.event.number }}
+  group: commitcheck-${{ github.repository }}-${{ github.event.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +31,14 @@ jobs:
           check-latest: true
 
       - name: Check commit messages
+        env:
+          FROM_SHA: ${{ github.event.pull_request.base.sha || inputs.base-sha }}
+          TO_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
+          set -euo pipefail
           npm install @commitlint/cli @commitlint/config-conventional conventional-changelog-conventionalcommits
-          npx commitlint --verbose --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+          if [ -z "$FROM_SHA" ]; then
+            echo "::error::No base commit. Run this check from a pull request, or pass base-sha."
+            exit 1
+          fi
+          npx commitlint --verbose --from "$FROM_SHA" --to "$TO_SHA"

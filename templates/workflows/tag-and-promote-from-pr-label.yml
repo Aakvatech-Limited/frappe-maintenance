@@ -8,6 +8,7 @@ on:
       - labeled
 
 permissions:
+  actions: write
   contents: write
   issues: write
   pull-requests: read
@@ -15,3 +16,5 @@ permissions:
 jobs:
   shared:
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/tag-and-promote-from-pr-label-reusable.yml@stable
+    with:
+      maintenance-ref: stable

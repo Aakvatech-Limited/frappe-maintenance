@@ -6,9 +6,12 @@ on:
     types: [closed, labeled]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
 jobs:
   shared:
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@stable
+    with:
+      maintenance-ref: stable

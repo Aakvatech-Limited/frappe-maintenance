@@ -2,6 +2,11 @@ name: Reusable Semgrep
 
 on:
   workflow_call:
+    inputs:
+      base-sha:
+        description: Check only changes after this commit. Pull requests use their base commit.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -49,7 +54,7 @@ jobs:
       - name: Run Semgrep rules
         env:
           # Keep existing findings visible in manual full scans, but block PRs on new findings.
-          SEMGREP_BASELINE_REF: ${{ github.event.pull_request.base.sha || '' }}
+          SEMGREP_BASELINE_REF: ${{ github.event.pull_request.base.sha || inputs.base-sha }}
         shell: bash
         run: |
           set -euo pipefail

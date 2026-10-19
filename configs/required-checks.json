@@ -1,0 +1,9 @@
+{
+  "checks": [
+    {"workflow": "semantic-commits.yml", "accepts_base_sha": true},
+    {"workflow": "pre-commit.yml", "accepts_base_sha": true},
+    {"workflow": "semgrep.yml", "accepts_base_sha": true},
+    {"workflow": "no-raw-sql.yml", "accepts_base_sha": false},
+    {"workflow": "linter.yml", "accepts_base_sha": false}
+  ]
+}

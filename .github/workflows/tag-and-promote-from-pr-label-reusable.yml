@@ -2,8 +2,14 @@ name: Reusable Tag and promote from PR label
 
 on:
   workflow_call:
+    inputs:
+      maintenance-ref:
+        description: frappe-maintenance ref for the required-check scripts; match the caller workflow ref.
+        type: string
+        default: stable
 
 permissions:
+  actions: write
   contents: write
   issues: write
   pull-requests: read
@@ -105,9 +111,9 @@ jobs:
           git fetch origin "$TARGET_BRANCH" --tags --force
 
           while IFS=$'\t' read -r commit subject trailer; do
-            if [[ "$subject" =~ ^chore\(release\):\ Bumped\ to\ Version\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]] &&
+            if [[ "$subject" =~ ^chore\(release\):\ ([Bb]ump|Bumped)\ to\ [Vv]ersion\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]] &&
               [[ "$trailer" == "Promoted-PR: #${PR_NUMBER}" ]]; then
-              tag="v${BASH_REMATCH[1]}"
+              tag="v${BASH_REMATCH[2]}"
               echo "existing=true" >> "$GITHUB_OUTPUT"
               echo "tag=$tag" >> "$GITHUB_OUTPUT"
               echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
@@ -251,6 +257,7 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           TARGET_BRANCH: ${{ steps.target.outputs.target_branch }}
+          CHECK_BRANCH: release/bump-${{ steps.release.outputs.tag }}
           VERSION: ${{ steps.release.outputs.version }}
           APP_INIT: ${{ steps.app.outputs.init_file }}
         shell: bash
@@ -281,9 +288,49 @@ jobs:
 
           git diff --check
           git add "$APP_INIT"
-          git commit -m "chore(release): Bumped to Version $VERSION" -m "Promoted-PR: #$PR_NUMBER"
-          git push origin "HEAD:$TARGET_BRANCH"
+          git commit -m "chore(release): bump to version $VERSION" -m "Promoted-PR: #$PR_NUMBER"
+          # Required checks must pass on this exact commit before it reaches the target branch.
+          git push --force origin "HEAD:refs/heads/$CHECK_BRANCH"
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "base=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout frappe-maintenance
+        if: >
+          steps.target.outputs.should_release == 'true' &&
+          steps.existing.outputs.existing == 'false'
+        uses: actions/checkout@v6
+        with:
+          repository: Aakvatech-Limited/frappe-maintenance
+          ref: ${{ inputs.maintenance-ref }}
+          path: .frappe-maintenance
+
+      - name: Run required checks on release commit
+        if: >
+          steps.target.outputs.should_release == 'true' &&
+          steps.existing.outputs.existing == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_BRANCH: release/bump-${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.release_commit.outputs.commit }}
+          BASE_COMMIT: ${{ steps.release_commit.outputs.base }}
+        run: |
+          python3 .frappe-maintenance/scripts/run_required_checks.py --repository "$GITHUB_REPOSITORY" \
+            --branch "$CHECK_BRANCH" --sha "$RELEASE_COMMIT" --base-sha "$BASE_COMMIT"
+
+      - name: Push release commit to target branch
+        if: >
+          steps.target.outputs.should_release == 'true' &&
+          steps.existing.outputs.existing == 'false'
+        env:
+          TARGET_BRANCH: ${{ steps.target.outputs.target_branch }}
+          CHECK_BRANCH: release/bump-${{ steps.release.outputs.tag }}
+          RELEASE_COMMIT: ${{ steps.release_commit.outputs.commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fast-forward only: if the target branch moved during the checks, fail and let a rerun release again.
+          git push origin "$RELEASE_COMMIT:refs/heads/$TARGET_BRANCH"
+          git push origin --delete "$CHECK_BRANCH"
 
       - name: Create and push version tag
         if: >

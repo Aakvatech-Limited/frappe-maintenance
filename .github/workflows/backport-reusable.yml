@@ -2,8 +2,14 @@ name: Reusable Backport
 
 on:
   workflow_call:
+    inputs:
+      maintenance-ref:
+        description: frappe-maintenance ref for the required-check scripts; match the caller workflow ref.
+        type: string
+        default: stable
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -169,6 +175,30 @@ jobs:
               else await github.rest.issues.createComment({owner,repo,issue_number:pr.number,body});
             }
             core.info(JSON.stringify(payload));
+
+      - name: Checkout frappe-maintenance
+        if: ${{ !cancelled() && steps.backport_action.outputs.created_pull_numbers != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: Aakvatech-Limited/frappe-maintenance
+          ref: ${{ inputs.maintenance-ref }}
+          path: .frappe-maintenance
+
+      # PRs created with GITHUB_TOKEN start no workflows, so the required checks are started here.
+      - name: Start required checks on backport PRs
+        if: ${{ !cancelled() && steps.backport_action.outputs.created_pull_numbers != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CREATED_PULL_NUMBERS: ${{ steps.backport_action.outputs.created_pull_numbers }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for number in $(grep -oE '[0-9]+' <<< "$CREATED_PULL_NUMBERS" | sort -u); do
+            read -r branch sha base < <(gh pr view "$number" --repo "$GITHUB_REPOSITORY" \
+              --json headRefName,headRefOid,baseRefOid --jq '"\(.headRefName) \(.headRefOid) \(.baseRefOid)"')
+            python3 .frappe-maintenance/scripts/run_required_checks.py --repository "$GITHUB_REPOSITORY" \
+              --branch "$branch" --sha "$sha" --base-sha "$base" --no-wait
+          done
 
       - name: Upload backport outcomes
         if: ${{ always() && steps.report.outcome == 'success' }}
