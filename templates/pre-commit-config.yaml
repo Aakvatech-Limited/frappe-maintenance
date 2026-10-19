@@ -1,6 +1,6 @@
 # Managed by Aakvatech-Limited/frappe-maintenance. Change it there, not in this app.
 minimum_pre_commit_version: "3.2.0"
-exclude: "^(node_modules/|frappe-semgrep-rules/|[.]vscode/|.*/node_modules/|[^/]+/public/(dist|frontend|css)/)"
+exclude: "^([.]frappe-maintenance/|node_modules/|frappe-semgrep-rules/|[.]vscode/|.*/node_modules/|[^/]+/public/(dist|frontend|css)/)"
 default_stages: [pre-commit]
 default_install_hook_types: [pre-commit, commit-msg, pre-push]
 fail_fast: false
