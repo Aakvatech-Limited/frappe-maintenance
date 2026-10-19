@@ -1,9 +1,9 @@
 {
   "checks": [
-    {"workflow": "semantic-commits.yml", "accepts_base_sha": true},
-    {"workflow": "pre-commit.yml", "accepts_base_sha": true},
-    {"workflow": "semgrep.yml", "accepts_base_sha": true},
-    {"workflow": "no-raw-sql.yml", "accepts_base_sha": false},
-    {"workflow": "linter.yml", "accepts_base_sha": false}
+    {"workflow": "semantic-commits.yml", "context": "shared / Check Commit Messages", "accepts_base_sha": true},
+    {"workflow": "pre-commit.yml", "context": "shared / pre-commit", "accepts_base_sha": true},
+    {"workflow": "semgrep.yml", "context": "shared / Semgrep", "accepts_base_sha": true},
+    {"workflow": "no-raw-sql.yml", "context": "shared / Reject raw database SQL", "accepts_base_sha": false},
+    {"workflow": "linter.yml", "context": "shared / Vulnerable Dependency Check", "accepts_base_sha": false}
   ]
 }

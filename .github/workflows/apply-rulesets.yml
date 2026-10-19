@@ -1,0 +1,43 @@
+name: Apply Required Check Rulesets
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Optional app repository name. Leave blank to apply to every app in configs/central-ci-apps.json.
+        required: false
+        default: ""
+        type: string
+      dry_run:
+        description: Inspect only; do not change rulesets or branch protection
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout maintenance repository
+        uses: actions/checkout@v4
+
+      - name: Apply required-checks ruleset
+        env:
+          # The Mass PR token; it also needs Administration: write on the app repositories.
+          GH_TOKEN: ${{ secrets.ORG_MAINTENANCE_TOKEN }}
+          REPOSITORY: ${{ inputs.repository }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Secret ORG_MAINTENANCE_TOKEN is not set."
+            exit 1
+          fi
+          args=()
+          [ -n "$REPOSITORY" ] && args+=(--repository "$REPOSITORY")
+          [ "$DRY_RUN" = "true" ] && args+=(--dry-run)
+          python3 scripts/apply_rulesets.py "${args[@]}"
