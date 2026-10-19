@@ -77,6 +77,20 @@ Pushes and pull requests made with `GITHUB_TOKEN` start no workflows. For apps i
 
 Pre-commit, Semgrep and Semantic Commits accept an optional `base-sha` input, so a started check looks only at the new commits. The release commit subject is `chore(release): bump to version X.Y.Z`. Earlier releases with `Bumped to Version` are still detected. Callers of tag and promote and backport need `actions: write`.
 
+### Required checks ruleset
+
+A PR cannot merge until these checks pass. The list and the check names are in `configs/required-checks.json`:
+
+| Check | Blocks on |
+| --- | --- |
+| `shared / Check Commit Messages` | Commit messages that break `commitlint.config.js` |
+| `shared / pre-commit` | Hook failures on changed files |
+| `shared / Semgrep` | New ERROR findings |
+| `shared / Reject raw database SQL` | Any raw SQL call in the app, including existing calls |
+| `shared / Vulnerable Dependency Check` | Known vulnerable dependencies |
+
+**Apply Required Check Rulesets** (`apply-rulesets.yml`) writes ruleset `aakvatech-required-checks` from `configs/rulesets/required-checks.json` to apps in `configs/central-ci-apps.json`. It covers the default branch and `version-*` (including `version-N-hotfix`), accepts results only from GitHub Actions, and removes classic required checks on those branches. It uses `ORG_MAINTENANCE_TOKEN` with Administration: write. Run it with `dry_run=true` first. The check names are not yet confirmed on a real run; compare them with the pilot PR before applying.
+
 Concurrency is defined only in the implementation. Caller and callee share `github.workflow`, so repeating cancellation groups in both can cancel the calling run.
 
 ### One-time rollout
