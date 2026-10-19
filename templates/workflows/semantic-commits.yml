@@ -3,6 +3,12 @@ name: Semantic Commits
 
 on:
   pull_request: {}
+  workflow_dispatch:
+    inputs:
+      base-sha:
+        description: Check only changes after this commit. Required for manual runs.
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -10,3 +16,5 @@ permissions:
 jobs:
   shared:
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@stable
+    with:
+      base-sha: ${{ inputs.base-sha }}
