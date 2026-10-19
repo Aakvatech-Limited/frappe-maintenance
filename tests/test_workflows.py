@@ -41,6 +41,7 @@ class WorkflowContracts(unittest.TestCase):
             'tag-and-promote-from-pr-label': {'pull_request_target'},
             'label-failed-prs': {'workflow_run', 'workflow_dispatch'},
             'linter': {'pull_request', 'workflow_dispatch'},
+            'semgrep': {'pull_request', 'workflow_dispatch'},
             'pre-commit': {'pull_request', 'workflow_dispatch'},
             'semantic-commits': {'pull_request'},
             'no-raw-sql': {'pull_request', 'push', 'workflow_dispatch'},
@@ -100,6 +101,27 @@ class WorkflowContracts(unittest.TestCase):
                 result = subprocess.run(['bash', '-c', script], env={'APP_DIR': temp, 'PATH': '/usr/bin:/bin'},
                                         capture_output=True, text=True)
                 self.assertEqual(result.returncode, expected_code, result.stdout + result.stderr)
+
+    def test_semgrep_evidence_survives_failed_gate(self):
+        steps = {step.get('name'): step for step in
+                 read_yaml(ROOT / '.github/workflows/semgrep-reusable.yml')['jobs']['semgrep']['steps']}
+        self.assertTrue(steps['Full Semgrep evidence report']['if'].startswith('always()'))
+        self.assertTrue(steps['Upload Semgrep findings']['if'].startswith('always()'))
+
+    def test_semgrep_summary_has_line_breaks(self):
+        script = read_yaml(ROOT / '.github/workflows/semgrep-reusable.yml')['jobs']['semgrep']['steps']
+        script = next(step['run'] for step in script if step.get('name') == 'Full Semgrep evidence report')
+        python = script.split("<<'PY'\n", 1)[1].rsplit('PY', 1)[0]
+        with tempfile.TemporaryDirectory() as temp:
+            Path(temp, 'audit-artifacts').mkdir()
+            Path(temp, 'audit-artifacts/semgrep-full.json').write_text(
+                json.dumps({'results': [{'extra': {'severity': 'ERROR'}}, {'extra': {'severity': 'WARNING'}}]}))
+            summary = Path(temp, 'summary.md')
+            subprocess.run(['python3', '-I', '-c', python], cwd=temp, check=True,
+                           env={'GITHUB_STEP_SUMMARY': str(summary), 'PATH': '/usr/bin:/bin'})
+            lines = summary.read_text().splitlines()
+        self.assertIn('Total findings: **2**', lines)
+        self.assertIn('- ERROR: 1', lines)
 
     def test_release_branch_guard(self):
         workflow = read_yaml(ROOT / '.github/workflows/tag-and-promote-from-pr-label-reusable.yml')
