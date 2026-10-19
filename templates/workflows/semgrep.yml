@@ -1,0 +1,13 @@
+name: Semgrep
+
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shared:
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semgrep-reusable.yml@stable
