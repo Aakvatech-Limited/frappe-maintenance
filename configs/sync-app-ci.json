@@ -1,0 +1,48 @@
+{
+  "organization": "Aakvatech-Limited",
+  "repository_include_regex": ".*",
+  "repository_exclude_regex": "^frappe-maintenance$",
+  "default_branch_only": false,
+  "include_default_branch": true,
+  "branch_include_regex": "^version-\\d+(?:-hotfix)?$",
+  "required_paths": [
+    "*/hooks.py"
+  ],
+  "required_paths_mode": "exactly_one_each",
+  "files": [
+    {
+      "source": "templates/pre-commit-config.yaml",
+      "target": ".pre-commit-config.yaml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/ruff.toml",
+      "target": "ruff.toml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/commitlint.config.js",
+      "target": "commitlint.config.js",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/setup-git-hooks.sh",
+      "target": "scripts/setup-git-hooks.sh",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/editorconfig",
+      "target": ".editorconfig",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/eslintrc",
+      "target": ".eslintrc",
+      "mode": "create_or_update"
+    }
+  ],
+  "work_branch_prefix": "automation/sync-app-ci",
+  "commit_message": "chore: sync CI and lint config from frappe-maintenance",
+  "pr_title": "chore: sync CI and lint config from frappe-maintenance",
+  "pr_body": "Updates the CI, lint and hook files that Aakvatech-Limited/frappe-maintenance manages. Do not edit these files in this app; change the templates in frappe-maintenance. The pre-commit check fails when they differ from frappe-maintenance."
+}

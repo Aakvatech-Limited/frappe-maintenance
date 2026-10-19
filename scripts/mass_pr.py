@@ -44,6 +44,19 @@ def render_text(text, context):
     return rendered
 
 
+def template_context(cfg, full_repo, repo_name, base_branch):
+    return {"ORG": cfg["organization"], "REPO_NAME": repo_name, "FULL_REPO": full_repo, "BRANCH": base_branch}
+
+
+def render_template(item, context, root=Path(".")):
+    """Return the bytes a campaign writes for one non-delete files entry."""
+    source = root / item["source"]
+    if not source.is_file():
+        raise FileNotFoundError(f"Template not found: {source}")
+    raw = source.read_bytes()
+    return render_text(raw.decode("utf-8"), context).encode("utf-8") if item.get("render", True) else raw
+
+
 def load_config(path):
     with open(path, "r", encoding="utf-8") as handle:
         cfg = json.load(handle)
@@ -195,7 +208,7 @@ def put_file(full_repo, target, branch, content, message, existing_sha=None):
 
 def apply_files(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
     changes = 0
-    context = {"ORG": cfg["organization"], "REPO_NAME": repo_name, "FULL_REPO": full_repo, "BRANCH": base_branch}
+    context = template_context(cfg, full_repo, repo_name, base_branch)
     for item in cfg["files"]:
         target = render_text(item["target"], context)
         mode = item.get("mode", "create_or_update")
@@ -212,12 +225,7 @@ def apply_files(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
             if not dry_run:
                 delete_file(full_repo, target, work_branch, render_text(cfg["commit_message"], context), existing["sha"])
             continue
-        source = Path(item["source"])
-        render = item.get("render", True)
-        if not source.is_file():
-            raise FileNotFoundError(f"Template not found: {source}")
-        raw = source.read_bytes()
-        desired = render_text(raw.decode("utf-8"), context).encode("utf-8") if render else raw
+        desired = render_template(item, context)
         existing = fetch_file_meta(full_repo, target, work_branch)
         if existing is None and mode == "update_only":
             print(f"    skip {target}: update_only and file does not exist")
@@ -239,7 +247,7 @@ def apply_files(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
 
 
 def ensure_pr(full_repo, repo_name, base_branch, work_branch, cfg, dry_run):
-    context = {"ORG": cfg["organization"], "REPO_NAME": repo_name, "FULL_REPO": full_repo, "BRANCH": base_branch}
+    context = template_context(cfg, full_repo, repo_name, base_branch)
     prs = gh_json(["pr", "list", "--repo", full_repo, "--head", work_branch, "--state", "open", "--json", "number,url"]) or []
     if prs:
         print(f"    PR already open: {prs[0].get('url', prs[0]['number'])}")

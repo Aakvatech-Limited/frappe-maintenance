@@ -2,6 +2,11 @@ name: Reusable Pre-commit
 
 on:
   workflow_call:
+    inputs:
+      maintenance-ref:
+        description: frappe-maintenance ref for managed config templates; match the caller workflow ref.
+        type: string
+        default: stable
 
 permissions:
   contents: read
@@ -35,3 +40,19 @@ jobs:
           SEMGREP_BASELINE_REF: ${{ github.event.pull_request.base.sha || '' }}
         with:
           extra_args: ${{ github.event_name == 'pull_request' && format('--from-ref {0} --to-ref {1}', github.event.pull_request.base.sha, github.sha) || '--all-files' }}
+
+      # Checked out after pre-commit so its --all-files run does not lint these files.
+      - name: Checkout frappe-maintenance
+        if: ${{ !cancelled() }}
+        uses: actions/checkout@v4
+        with:
+          repository: Aakvatech-Limited/frappe-maintenance
+          ref: ${{ inputs.maintenance-ref }}
+          path: .frappe-maintenance
+
+      - name: Check managed config files
+        if: ${{ !cancelled() }}
+        env:
+          REPOSITORY: ${{ github.event.repository.name }}
+          BASE_BRANCH: ${{ github.base_ref || github.ref_name }}
+        run: python .frappe-maintenance/scripts/check_app_config_drift.py --root . --repository "$REPOSITORY" --branch "$BASE_BRANCH"
