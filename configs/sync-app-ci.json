@@ -39,10 +39,64 @@
       "source": "templates/eslintrc",
       "target": ".eslintrc",
       "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/backport.yml",
+      "target": ".github/workflows/backport.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/custom-app-compliance.yml",
+      "target": ".github/workflows/custom-app-compliance.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/label-failed-prs.yml",
+      "target": ".github/workflows/label-failed-prs.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/linter.yml",
+      "target": ".github/workflows/linter.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/modernize-frappe.yml",
+      "target": ".github/workflows/modernize-frappe.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/no-raw-sql.yml",
+      "target": ".github/workflows/no-raw-sql.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/pre-commit.yml",
+      "target": ".github/workflows/pre-commit.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/semantic-commits.yml",
+      "target": ".github/workflows/semantic-commits.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/semgrep.yml",
+      "target": ".github/workflows/semgrep.yml",
+      "mode": "create_or_update"
+    },
+    {
+      "source": "templates/workflows/tag-and-promote-from-pr-label.yml",
+      "target": ".github/workflows/tag-and-promote-from-pr-label.yml",
+      "mode": "create_or_update"
     }
   ],
   "work_branch_prefix": "automation/sync-app-ci",
   "commit_message": "chore: sync CI and lint config from frappe-maintenance",
   "pr_title": "chore: sync CI and lint config from frappe-maintenance",
-  "pr_body": "Updates the CI, lint and hook files that Aakvatech-Limited/frappe-maintenance manages. Do not edit these files in this app; change the templates in frappe-maintenance. The pre-commit check fails when they differ from frappe-maintenance."
+  "pr_body": "Updates the CI, lint and hook files that Aakvatech-Limited/frappe-maintenance manages. Do not edit these files in this app; change the templates in frappe-maintenance. The pre-commit check fails when they differ from frappe-maintenance.",
+  "required_workflow_source": {
+    "repository": "Aakvatech-Limited/frappe-maintenance",
+    "ref": "stable"
+  }
 }
