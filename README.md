@@ -47,6 +47,27 @@ From **Actions → Mass PR Across Organization**, use `configs/sync-standard-wor
 
 This README update reviewed the ten latest commits on `main` as of 13 October 2026: [8622f45](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/8622f453bf6561e850cfeaf74d9c9dce912f3ae2), [7d77ac8](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/7d77ac81e0fea1827251c9e8ce315013b54fb58a), [a2f314b](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/a2f314bc91a4815ab6f2df85c37533964179d74b), [1508f01](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/1508f01f1ae817377c492c8811df8168bca168aa), [92e092e](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/92e092e2dbe0c9a2509034ebfa785840cb63d9ce), [2e59e42](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/2e59e4297286a21cb2ee63cfda603473fc733d41), [100b727](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/100b7275262e76bc645fd181ed8f2496efc2e030), [e3c6f3b](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/e3c6f3b1f614be2aeea2942e2f56fb86bee43cf4), [e9540b1](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/e9540b147bfca6246725dcb86214f8713968061d), and [edc373d](https://github.com/Aakvatech-Limited/frappe-maintenance/commit/edc373d46415fff7d3ef69748d83f1894c78dcd1).
 
+## Central CI for apps
+
+Apps in `configs/central-ci-apps.json` keep one file: `.github/workflows/aakvatech-ci.yml` (`templates/workflows/aakvatech-ci.yml`). It calls `.github/workflows/router.yml@stable`, which selects the jobs for each event:
+
+| Event | Jobs |
+| --- | --- |
+| `pull_request`, or manual run with task `checks` | semantic-commits, pre-commit, semgrep, no-raw-sql, linter |
+| `pull_request_target` (closed, labeled) | backport, tag-and-promote |
+| `workflow_run` of a `pull_request` run | label-failed-prs |
+| Manual run with task `compliance` or `modernize` | compliance, modernize |
+
+To add or change a check or workflow, change `router.yml` or a reusable workflow, merge, and publish `stable`. Apps use it on their next event; no app PR is needed.
+
+Config files (`configs/app-config-files.json`) are not committed to apps. CI links them from its frappe-maintenance checkout, and fails when an app commits one of them. On a developer machine, link them and install the git hooks once per bench, and keep the frappe-maintenance clone on `stable`:
+
+```bash
+python3 scripts/app_config_links.py install --bench ~/frappe-bench
+```
+
+To move an app once, add it to `configs/central-ci-apps.json`, publish `stable`, and run **Mass PR Across Organization** with `configs/onboard-central-ci.json`. The PR adds the trigger and deletes the old workflow and config files.
+
 ## Shared workflows and stable publication
 
 All ten templates in `templates/workflows/` are callers. The implementations live in `.github/workflows/*-reusable.yml` and declare `workflow_call`. Existing workflow names, triggers, internal job names, release labels and branch checks are retained. Failed-run labeling now explicitly watches all workflow names except itself, as required by GitHub's `workflow_run` configuration.
@@ -68,7 +89,7 @@ Callers retain triggers and minimum token permissions. The central jobs receive 
 
 ### Required checks on release and backport commits
 
-Pushes and pull requests made with `GITHUB_TOKEN` start no workflows. For apps in `configs/central-ci-apps.json`, the workflows start the checks in `configs/required-checks.json` with `workflow_dispatch` instead:
+Pushes and pull requests made with `GITHUB_TOKEN` start no workflows. For apps in `configs/central-ci-apps.json`, the workflows start the app trigger (`aakvatech-ci.yml`, task `checks`) with `workflow_dispatch` instead:
 
 | Workflow | Behavior |
 | --- | --- |
@@ -83,11 +104,11 @@ A PR cannot merge until these checks pass. The list and the check names are in `
 
 | Check | Blocks on |
 | --- | --- |
-| `shared / Check Commit Messages` | Commit messages that break `commitlint.config.js` |
-| `shared / pre-commit` | Hook failures on changed files |
-| `shared / Semgrep` | New ERROR findings |
-| `shared / Reject raw database SQL` | Any raw SQL call in the app, including existing calls |
-| `shared / Vulnerable Dependency Check` | Known vulnerable dependencies |
+| `ci / semantic-commits / Check Commit Messages` | Commit messages that break `commitlint.config.js` |
+| `ci / pre-commit / pre-commit` | Hook failures on changed files |
+| `ci / semgrep / Semgrep` | New ERROR findings |
+| `ci / no-raw-sql / Reject raw database SQL` | Any raw SQL call in the app, including existing calls |
+| `ci / linter / Vulnerable Dependency Check` | Known vulnerable dependencies |
 
 **Apply Required Check Rulesets** (`apply-rulesets.yml`) writes ruleset `aakvatech-required-checks` from `configs/rulesets/required-checks.json` to apps in `configs/central-ci-apps.json`. It covers the default branch and `version-*` (including `version-N-hotfix`), accepts results only from GitHub Actions, and removes classic required checks on those branches. It uses `ORG_MAINTENANCE_TOKEN` with Administration: write. Run it with `dry_run=true` first. The check names are not yet confirmed on a real run; compare them with the pilot PR before applying.
 
