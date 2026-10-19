@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from check_app_config_drift import MAINTENANCE_ROOT
+from app_config_links import MAINTENANCE_ROOT
 from mass_pr import gh_json, gh_text, run
 
 GITHUB_ACTIONS_APP_ID = 15368
