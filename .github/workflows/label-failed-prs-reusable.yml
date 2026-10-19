@@ -44,8 +44,8 @@ jobs:
                 }
               );
 
+              // Only pull_request runs; this workflow's own runs use other events.
               const relevantRuns = runs.filter(run =>
-                run.name !== context.workflow &&
                 run.event === 'pull_request' &&
                 run.status === 'completed'
               );
@@ -91,7 +91,7 @@ jobs:
             }
 
             const run = context.payload.workflow_run;
-            if (!run || run.name === context.workflow) return;
+            if (!run || run.event !== 'pull_request') return;
 
             const prNumbers = new Set((run.pull_requests || []).map(pr => pr.number));
             if (prNumbers.size === 0) {
