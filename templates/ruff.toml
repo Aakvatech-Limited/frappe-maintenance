@@ -1,0 +1,36 @@
+# Managed by Aakvatech-Limited/frappe-maintenance. Change it there, not in this app.
+# Ruff reads this file before pyproject.toml, so [tool.ruff] in the app has no effect.
+line-length = 110
+target-version = "py310"
+
+[lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "UP",
+    "B",
+    "RUF",
+]
+ignore = [
+    "B017", # assertRaises(Exception) - should be more specific
+    "B018", # useless expression, not assigned to anything
+    "B023", # function doesn't bind loop variable - will have last iteration's value
+    "B904", # raise inside except without from
+    "E101", # indentation contains mixed spaces and tabs
+    "E402", # module level import not at top of file
+    "E501", # line too long
+    "E741", # ambiguous variable name
+    "F401", # "unused" imports
+    "F403", # can't detect undefined names from * import
+    "F405", # can't detect undefined names from * import
+    "F722", # syntax error in forward type annotation
+    "W191", # indentation contains tabs
+]
+typing-modules = ["frappe.types.DF"]
+
+[format]
+quote-style = "double"
+indent-style = "tab"
+docstring-code-format = true
