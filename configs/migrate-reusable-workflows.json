@@ -29,6 +29,11 @@
       "mode": "create_or_update"
     },
     {
+      "source": "templates/workflows/semgrep.yml",
+      "target": ".github/workflows/semgrep.yml",
+      "mode": "create_or_update"
+    },
+    {
       "source": "templates/workflows/no-raw-sql.yml",
       "target": ".github/workflows/no-raw-sql.yml",
       "mode": "create_or_update"

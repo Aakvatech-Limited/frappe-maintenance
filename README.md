@@ -49,11 +49,12 @@ This README update reviewed the ten latest commits on `main` as of 13 October 20
 
 ## Shared workflows and stable publication
 
-All nine templates in `templates/workflows/` are callers. The implementations live in `.github/workflows/*-reusable.yml` and declare `workflow_call`. Existing workflow names, triggers, internal job names, release labels and branch checks are retained. Failed-run labeling now explicitly watches all workflow names except itself, as required by GitHub's `workflow_run` configuration.
+All ten templates in `templates/workflows/` are callers. The implementations live in `.github/workflows/*-reusable.yml` and declare `workflow_call`. Existing workflow names, triggers, internal job names, release labels and branch checks are retained. Failed-run labeling now explicitly watches all workflow names except itself, as required by GitHub's `workflow_run` configuration.
 
 | Caller | Central implementation | Trigger |
 | --- | --- | --- |
 | `linter.yml` | `linter-reusable.yml` | PR / manual |
+| `semgrep.yml` | `semgrep-reusable.yml` | PR / manual |
 | `pre-commit.yml` | `pre-commit-reusable.yml` | PR / manual |
 | `no-raw-sql.yml` | `no-raw-sql-reusable.yml` | PR / push / manual |
 | `semantic-commits.yml` | `semantic-commits-reusable.yml` | PR |
@@ -297,3 +298,11 @@ Recommended rollout:
 Eligible repositories are currently detected by the presence of exactly one `*/hooks.py`.
 
 The caller uses `custom-app-compliance-reusable.yml@stable`. Future rules are adopted after the approved central commit is published to `stable`.
+
+## Frappe Cloud audit evidence in centralized CI
+
+The reusable `semgrep-reusable.yml` runs a differential Semgrep error gate and a **full-repository finding export**. It uploads `semgrep-finding-evidence/semgrep-full.json` (90-day retention) and writes severity totals to the Actions job summary. The export and upload also run when the error gate fails. Unlike a PR-only differential check, the full export includes pre-existing findings, enabling source-to-finding reconciliation after each bulk remediation.
+
+**Rollout:** Merge the central PR to `main`, pilot an app caller pointing at `@main`, publish the approved commit to `stable` through **Publish stable workflows**, then allow app repositories already calling `@stable` to use it. Local copied workflows, such as those in `csf_tz`, do not inherit this improvement until migrated to the reusable caller.
+
+The JSON is a new-scan snapshot, **not** the missing original 497-finding report. Capture the original baseline separately. Missing scanner installations or missing artifacts fail the workflow rather than being treated as zero findings. This automation generates reports; it does not automatically change application code or fix old findings.
