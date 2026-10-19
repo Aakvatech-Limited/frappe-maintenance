@@ -25,13 +25,14 @@ def read_yaml(path):
 class RequiredCheckRuleset(unittest.TestCase):
     def test_each_context_matches_its_central_job(self):
         # A context that no job reports would block every merge.
+        trigger = read_yaml(ROOT / 'templates/workflows/aakvatech-ci.yml')
+        (trigger_job, _), = trigger['jobs'].items()
+        router = read_yaml(ROOT / '.github/workflows/router.yml')['jobs']
         for check in CHECKS:
-            with self.subTest(workflow=check['workflow']):
-                caller = read_yaml(ROOT / 'templates/workflows' / check['workflow'])
-                (caller_job, job), = caller['jobs'].items()
-                callee = read_yaml(ROOT / job['uses'].split('/', 2)[2].split('@')[0])
-                job_names = [callee_job.get('name', key) for key, callee_job in callee['jobs'].items()]
-                self.assertIn(check['context'], [f'{caller_job} / {name}' for name in job_names])
+            with self.subTest(job=check['job']):
+                callee = read_yaml(ROOT / router[check['job']]['uses'].split('/', 2)[2].split('@')[0])
+                names = [job.get('name', key) for key, job in callee['jobs'].items()]
+                self.assertIn(check['context'], [f"{trigger_job} / {check['job']} / {name}" for name in names])
 
     def test_ruleset_lists_every_check_from_github_actions(self):
         ruleset = apply_rulesets.build_ruleset(TEMPLATE, CHECKS)
