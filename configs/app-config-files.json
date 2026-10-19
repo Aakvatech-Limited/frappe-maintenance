@@ -1,0 +1,9 @@
+{
+  "files": [
+    {"source": "templates/pre-commit-config.yaml", "target": ".pre-commit-config.yaml"},
+    {"source": "templates/ruff.toml", "target": "ruff.toml"},
+    {"source": "templates/commitlint.config.js", "target": "commitlint.config.js"},
+    {"source": "templates/editorconfig", "target": ".editorconfig"},
+    {"source": "templates/eslintrc", "target": ".eslintrc"}
+  ]
+}

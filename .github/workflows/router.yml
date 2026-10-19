@@ -1,0 +1,99 @@
+name: Reusable Aakvatech CI Router
+
+# Apps keep only templates/workflows/aakvatech-ci.yml, which calls this file.
+# Add or change checks and workflows here; apps use them on their next event.
+on:
+  workflow_call:
+    inputs:
+      task:
+        description: Manual runs only. checks, compliance or modernize.
+        type: string
+        default: checks
+      base-sha:
+        description: Checks only. Check only changes after this commit.
+        type: string
+        default: ""
+
+jobs:
+  # Required checks. Never skip them on pull_request: GitHub counts a skipped job as passed.
+  semantic-commits:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@stable
+    with:
+      base-sha: ${{ inputs.base-sha }}
+
+  pre-commit:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@stable
+    with:
+      base-sha: ${{ inputs.base-sha }}
+
+  semgrep:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semgrep-reusable.yml@stable
+    with:
+      base-sha: ${{ inputs.base-sha }}
+
+  no-raw-sql:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/no-raw-sql-reusable.yml@stable
+
+  linter:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/linter-reusable.yml@stable
+
+  # Merged PR automation. These jobs check out base branches only, never PR code.
+  backport:
+    if: github.event_name == 'pull_request_target'
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@stable
+
+  tag-and-promote:
+    if: github.event_name == 'pull_request_target'
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+      pull-requests: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/tag-and-promote-from-pr-label-reusable.yml@stable
+
+  # Runs after a pull_request run finishes; fork PR runs cannot write labels themselves.
+  label-failed-prs:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request'
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@stable
+
+  # Manual tasks.
+  compliance:
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'compliance'
+    permissions:
+      contents: read
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@stable
+    with:
+      maintenance-ref: stable
+
+  modernize:
+    if: github.event_name == 'workflow_dispatch' && inputs.task == 'modernize'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/modernize-frappe-reusable.yml@stable
+    with:
+      maintenance-ref: stable

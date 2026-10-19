@@ -3,6 +3,10 @@ name: Reusable Semantic Commits
 on:
   workflow_call:
     inputs:
+      maintenance-ref:
+        description: frappe-maintenance ref for config files; match the caller workflow ref.
+        type: string
+        default: stable
       base-sha:
         description: Check only changes after this commit. Pull requests use their base commit.
         type: string
@@ -24,6 +28,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 200
+
+      - name: Checkout frappe-maintenance
+        uses: actions/checkout@v4
+        with:
+          repository: Aakvatech-Limited/frappe-maintenance
+          ref: ${{ inputs.maintenance-ref }}
+          path: .frappe-maintenance
+
+      - name: Link config files from frappe-maintenance
+        env:
+          REPOSITORY: ${{ github.event.repository.name }}
+        run: python3 .frappe-maintenance/scripts/app_config_links.py ci --root . --repository "$REPOSITORY"
 
       - uses: actions/setup-node@v4
         with:
