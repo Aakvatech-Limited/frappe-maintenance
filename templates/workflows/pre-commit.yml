@@ -4,6 +4,11 @@ name: Pre-commit
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      base-sha:
+        description: Check only changes after this commit. Leave empty to check everything.
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -13,3 +18,4 @@ jobs:
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@stable
     with:
       maintenance-ref: stable
+      base-sha: ${{ inputs.base-sha }}
