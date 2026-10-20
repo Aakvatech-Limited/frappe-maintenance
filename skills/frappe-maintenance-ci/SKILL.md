@@ -24,7 +24,7 @@ Run it in the frappe-maintenance clone. `False` means: stop and use `pre-commit-
 ## Rules
 
 - Never add CI, lint or hook files to the app: no other `.github/workflows/*.yml`, `.pre-commit-config.yaml`, `ruff.toml`, `commitlint.config.js`, `.editorconfig`, `.eslintrc`. The pre-commit check fails when the app commits one of them.
-- To add or change a check or workflow, change `.github/workflows/router.yml` or a `*-reusable.yml` in frappe-maintenance, merge, and publish `stable`. Never ask for an app PR for this.
+- To add or change a check or workflow, change `.github/workflows/router.yml` or a `*-reusable.yml` in a frappe-maintenance PR and merge it to `main`. Apps use it on their next run. Never ask for an app PR for this.
 - To change a lint rule, change the file in `frappe-maintenance/templates/` (listed in `configs/app-config-files.json`). Do not use `{{...}}` placeholders there; apps link these files as they are.
 - To make a new check mandatory, add its job and status name to `configs/required-checks.json`, then run **Apply Required Check Rulesets** (needs Administration: write on the maintenance token).
 - `[tool.ruff]` in the app `pyproject.toml` has no effect; the linked `ruff.toml` wins.
@@ -34,7 +34,7 @@ Run it in the frappe-maintenance clone. `False` means: stop and use `pre-commit-
 
 ## Developer setup (once per bench)
 
-Keep a frappe-maintenance clone on `stable` and pull it from time to time. Then:
+Keep a frappe-maintenance clone on `main` and pull it from time to time. Then:
 
 ```bash
 python3 <frappe-maintenance>/scripts/app_config_links.py install --bench <bench>
@@ -49,7 +49,7 @@ A PR cannot merge until these pass (once the ruleset is applied): semantic commi
 ## Move an app to central CI (once per app)
 
 1. Fix what the full checks will report in the app first: raw SQL calls, and files that fail `pre-commit run --all-files` with the central config. Merge these as normal PRs.
-2. Add the app to `configs/central-ci-apps.json` in a frappe-maintenance PR. Merge it and publish `stable` (**Publish stable workflows**).
+2. Add the app to `configs/central-ci-apps.json` in a frappe-maintenance PR and merge it.
 3. Run **Mass PR Across Organization** with `config_path=configs/onboard-central-ci.json`, `repository=<app>`, `dry_run=true`. Read the log, then run with `dry_run=false`.
 4. Merge the PRs on each branch (default, `version-N`, `version-N-hotfix`). This is the only app PR the app ever needs for CI.
 5. Open a test PR in the app and note the exact check names. If they differ from `configs/required-checks.json`, fix that file first.
