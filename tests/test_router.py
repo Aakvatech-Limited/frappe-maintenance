@@ -72,8 +72,11 @@ class OnboardingCampaign(unittest.TestCase):
         deleted = {item['target'] for item in files if item.get('mode') == 'delete'}
         self.assertEqual(created, ['.github/workflows/aakvatech-ci.yml'])
         managed = {item['target'] for item in json.loads((ROOT / 'configs/app-config-files.json').read_text())['files']}
-        old_callers = {f'.github/workflows/{path.name}' for path in (ROOT / 'templates/workflows').glob('*.yml')
-                       if path.name != 'aakvatech-ci.yml'}
+        old_callers = {'.github/workflows/' + name + '.yml' for name in (
+            'backport', 'custom-app-compliance', 'label-failed-prs', 'linter',
+            'modernize-frappe', 'no-raw-sql', 'pre-commit', 'semantic-commits',
+            'semgrep', 'tag-and-promote-from-pr-label'
+        )}
         self.assertLessEqual(managed | old_callers, deleted)
 
 

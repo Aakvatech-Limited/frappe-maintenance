@@ -9,15 +9,15 @@
   "required_paths_mode": "exactly_one_each",
   "files": [
     {
-      "source": "templates/workflows/custom-app-compliance.yml",
-      "target": ".github/workflows/custom-app-compliance.yml",
+      "source": "templates/workflows/aakvatech-ci.yml",
+      "target": ".github/workflows/aakvatech-ci.yml",
       "mode": "create_or_update"
     }
   ],
   "work_branch_prefix": "automation/custom-app-compliance",
-  "commit_message": "chore: add manual custom app compliance workflow",
-  "pr_title": "chore: add manual custom app compliance workflow",
-  "pr_body": "Adds the centrally managed manual custom Frappe app compliance audit. Run Custom App Compliance from the Actions tab when an app needs to be reviewed. The audit reports whether Workspace, Report, Dashboard, Dashboard Chart, and Number Card artifacts are present.",
+  "commit_message": "ci: adopt central Aakvatech CI router",
+  "pr_title": "ci: adopt central Aakvatech CI router",
+  "pr_body": "Installs the single Aakvatech CI caller for all checks, backporting, labeling, compliance and modernization. Use configs/onboard-central-ci.json for complete migration that also deletes obsolete individual workflow callers.",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
     "ref": "stable"

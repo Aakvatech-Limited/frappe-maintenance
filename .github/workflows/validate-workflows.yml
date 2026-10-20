@@ -38,4 +38,4 @@ jobs:
             --output "$RUNNER_TEMP/actionlint.tar.gz"
           tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
       - name: Validate workflows and caller templates
-        run: '"$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes= .github/workflows/*.yml templates/workflows/*.yml templates/label-failed-prs.yml templates/modernize-frappe.yml'
+        run: '"$RUNNER_TEMP/actionlint" -shellcheck= -pyflakes= .github/workflows/*.yml templates/workflows/*.yml'

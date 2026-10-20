@@ -9,15 +9,15 @@
   "required_paths_mode": "exactly_one_each",
   "files": [
     {
-      "source": "templates/modernize-frappe.yml",
-      "target": ".github/workflows/modernize-frappe.yml",
+      "source": "templates/workflows/aakvatech-ci.yml",
+      "target": ".github/workflows/aakvatech-ci.yml",
       "mode": "create_or_update"
     }
   ],
   "work_branch_prefix": "automation/bootstrap-frappe-maintenance",
-  "commit_message": "chore: add Frappe maintenance workflow",
-  "pr_title": "chore: add Frappe maintenance workflow",
-  "pr_body": "Adds the organization-managed Frappe packaging modernization workflow. It is manually triggered and opens modernization changes as a PR.",
+  "commit_message": "ci: adopt central Aakvatech CI router",
+  "pr_title": "ci: adopt central Aakvatech CI router",
+  "pr_body": "Installs the single Aakvatech CI caller for all checks, backporting, labeling, compliance and modernization. Use configs/onboard-central-ci.json for complete migration that also deletes obsolete individual workflow callers.",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
     "ref": "stable"

@@ -37,11 +37,9 @@ The central [Backport Reconciliation workflow](.github/workflows/backport-reconc
 
 **Important limits:** This is a conservative exception register, not a full git-content equivalence verifier. A manually cherry-picked fix with no linked backport PR can remain `unverified`. Searches are bounded by update timestamps, configured history window, and pagination; very old backports may be omitted. Missing linked evidence does **not** itself establish that a cherry-pick conflict occurred. See [backport reconciliation details](docs/backport-reconciliation.md).
 
-### Organization-wide EditorConfig and ESLint defaults (PR [#7](https://github.com/Aakvatech-Limited/frappe-maintenance/pull/7))
+### Central EditorConfig and ESLint defaults
 
-The `configs/sync-standard-workflows-default-branch.json` campaign now distributes `templates/editorconfig` and `templates/eslintrc` as `.editorconfig` and `.eslintrc` alongside the standard workflow callers. The campaign targets **default branches only**, recognizes eligible Frappe apps using exactly one `*/hooks.py`, and uses `create_or_update` (so existing files may be replaced through reviewable PRs). Inspect app-specific formatting/lint choices before merging.
-
-From **Actions → Mass PR Across Organization**, use `configs/sync-standard-workflows-default-branch.json`, first with `repository=av_tools` and `dry_run=true`; review the pilot PR before organization-wide distribution. This campaign does not automatically rewrite maintained version branches.
+Formatting rules are centrally maintained in `templates/editorconfig` and `templates/eslintrc`. Applications onboarded through `configs/onboard-central-ci.json` use these configurations through `configs/app-config-files.json` and `scripts/app_config_links.py`, rather than copying them into each application.
 
 ### Commit coverage
 
@@ -70,22 +68,16 @@ To move an app once, add it to `configs/central-ci-apps.json`, publish `stable`,
 
 ## Shared workflows and stable publication
 
-All ten templates in `templates/workflows/` are callers. The implementations live in `.github/workflows/*-reusable.yml` and declare `workflow_call`. Existing workflow names, triggers, internal job names, release labels and branch checks are retained. Failed-run labeling now explicitly watches all workflow names except itself, as required by GitHub's `workflow_run` configuration.
+The only application caller template is `templates/workflows/aakvatech-ci.yml`. It invokes `router.yml@stable`, whose ten jobs call the central reusable workflows directly. Legacy per-job application caller templates have been retired; the centralized implementations remain.
 
-| Caller | Central implementation | Trigger |
+| Router jobs | Reusable workflow | Event |
 | --- | --- | --- |
-| `linter.yml` | `linter-reusable.yml` | PR / manual |
-| `semgrep.yml` | `semgrep-reusable.yml` | PR / manual |
-| `pre-commit.yml` | `pre-commit-reusable.yml` | PR / manual |
-| `no-raw-sql.yml` | `no-raw-sql-reusable.yml` | PR / push / manual |
-| `semantic-commits.yml` | `semantic-commits-reusable.yml` | PR |
-| `backport.yml` | `backport-reusable.yml` | PR closed / labeled |
-| `tag-and-promote-from-pr-label.yml` | `tag-and-promote-from-pr-label-reusable.yml` | PR closed / labeled |
-| `label-failed-prs.yml` | `label-failed-prs-reusable.yml` | Workflow completed / manual |
-| `custom-app-compliance.yml` | `custom-app-compliance-reusable.yml` | Manual |
-| `modernize-frappe.yml` | `modernize-frappe-reusable.yml` | Manual |
+| semantic-commits, pre-commit, semgrep, no-raw-sql, linter | Matching `*-reusable.yml` | PR or manual checks |
+| backport, tag-and-promote | Matching `*-reusable.yml` | Merged/labeled PR |
+| label-failed-prs | `label-failed-prs-reusable.yml` | Completed Aakvatech CI PR run |
+| compliance, modernize | Matching `*-reusable.yml` | Manual tasks |
 
-Callers retain triggers and minimum token permissions. The central jobs receive the app's event context and `GITHUB_TOKEN` automatically; no organization token or `secrets: inherit` is needed for these calls. Backport/modernization still require the app's Actions setting to allow GitHub Actions to create pull requests. Required branch protections still apply to release commits. Organization Actions policy must allow the central workflows and their actions.
+The central router supplies per-job permissions. Backport and modernization still require the application repository to allow GitHub Actions to create pull requests.
 
 ### Required checks on release and backport commits
 
@@ -116,14 +108,13 @@ Concurrency is defined only in the implementation. Caller and callee share `gith
 
 ### One-time rollout
 
-1. Merge the central reusable workflow PR into `main`.
-2. In a pilot app (for example `av_tools`), temporarily point callers to `@main` and run the relevant checks. For compliance and modernization, also pass `with: {maintenance-ref: main}` so scripts follow the pilot workflow version. Release/backport behavior should be exercised on a controlled test repository before organization-wide use.
-3. In this repository, run **Publish stable workflows** from `main` and enter the full SHA of the approved, merged commit. It validates that exact commit again, requires it to be an ancestor of `main`, and creates or fast-forwards `stable`. It never force-pushes. Publication does not trigger builds in application repositories.
-4. Run **Mass PR Across Organization** with `configs/migrate-reusable-workflows.json`, `repository=av_tools`, `dry_run=true`. Then use `dry_run=false` to open the pilot migration PR.
-5. Merge the pilot callers and verify the app's Actions runs. The migration retains workflow and internal job names, but reusable calls add an outer job (`shared`), so required status-check contexts can change. Update required checks to the exact names shown on the pilot PR before expanding rollout.
-6. Run the same campaign for the remaining eligible apps. It targets each default branch plus `version-N` and `version-N-hotfix` branches. Review and merge those initial PRs.
+1. Merge changes into `main`, validate them, pilot on a controlled application, then publish the approved commit through `publish-stable.yml`.
+2. Add the application to `configs/central-ci-apps.json`.
+3. Run **Mass PR Across Organization** with `configs/onboard-central-ci.json`, starting with one repository and `dry_run=true`.
+4. Review the resulting application PR. It adds `.github/workflows/aakvatech-ci.yml` and removes obsolete individual workflow callers and copied lint configuration files.
+5. Merge the application PR and verify required checks, backport behavior, and branch protection before expanding the rollout.
 
-Do not merge `@stable` callers before the channel exists. The workflow campaign preflight blocks rollout if `stable` or any referenced central workflow is missing. The older default-branch-only sync config remains available and now also distributes callers exclusively.
+The former `migrate-reusable-workflows.json`, `migrate-backport-callers.json`, `sync-standard-workflows-default-branch.json`, and `label-failed-prs.json` campaigns have been retired.
 
 ### Routine changes
 
@@ -140,7 +131,7 @@ To roll back, revert the faulty central change on `main`, validate and publish t
 ```bash
 python -m pip install PyYAML==6.0.3
 python -m unittest discover -s tests -v
-actionlint -shellcheck= -pyflakes= .github/workflows/*.yml templates/workflows/*.yml templates/label-failed-prs.yml templates/modernize-frappe.yml
+actionlint -shellcheck= -pyflakes= .github/workflows/*.yml templates/workflows/*.yml
 ```
 
 Tests verify caller/callee permission contracts, event triggers, campaign contents, branch selection, embedded Bash/Python/JavaScript syntax, the raw-SQL rejection policy, and release promotion branch guards. GitHub-hosted execution in the pilot is required to verify token permissions, required-check contexts and external actions.
@@ -170,7 +161,7 @@ The workflow has an optional `repository` input:
 The same behavior is available from the CLI:
 
 ```bash
-python3 scripts/mass_pr.py configs/frappe-maintenance.json --repository av_tools --dry-run
+python3 scripts/mass_pr.py configs/onboard-central-ci.json --repository av_tools --dry-run
 ```
 
 Omit `--repository` to process all eligible repositories.
@@ -255,29 +246,9 @@ Dry runs print `delete <path>` without writing anything. Missing files print a s
 
 Workflow campaigns declare `required_workflow_source`; the engine checks that the central ref and referenced workflows exist before creating any application branches or PRs.
 
-### Focused backport-caller migration (PR 3)
+### Remaining deployment configurations
 
-For repositories still containing their own `.github/workflows/backport.yml`,
-use `configs/migrate-backport-callers.json` in **Mass PR Across Organization**.
-Unlike `configs/migrate-reusable-workflows.json`, this campaign changes **only**
-the Backport workflow and leaves every other CI workflow intact.
-
-Start with `repository=av_tools`, `dry_run=true`; verify the resulting target
-branches and the `stable` reusable workflow source. Repeat with
-`dry_run=false` to create reviewable PRs, then remove the repository selector
-for other eligible Frappe apps. The campaign includes default branches and
-`version-N` / `version-N-hotfix` branches. All app PRs must be reviewed and
-merged; running the campaign alone does not deploy its changes.
-
-**Before rollout:** publish an approved central commit containing backport
-attempt reporting to the `stable` channel, check repository Actions permission
-to call reusable workflows and create PRs, and validate required status-check
-contexts in a pilot. Backport reconciler setup remains centralized in
-`frappe-maintenance` and does not need a per-app scheduled workflow.
-
-### Existing Frappe maintenance campaign
-
-`configs/frappe-maintenance.json` distributes `templates/modernize-frappe.yml` to eligible Frappe version branches as `.github/workflows/modernize-frappe.yml`.
+`configs/frappe-maintenance.json` and `configs/custom-app-compliance-workflow.json` are retained for compatibility with existing mass-PR invocations, but now point to the surviving single `aakvatech-ci.yml` caller. Both are narrower, legacy entrypoints; prefer `configs/onboard-central-ci.json` because it also removes superseded workflows and configuration files. Do not run multiple campaigns against the same app without reviewing the resulting PRs.
 
 ## Frappe Packaging Modernization
 
@@ -306,11 +277,11 @@ The custom app compliance system verifies that a managed Frappe application cont
 
 The centrally maintained rules live in `configs/custom-app-compliance.json`, and the scanner lives in `scripts/check_custom_app_compliance.py`.
 
-Each Frappe application receives only the lightweight caller workflow from `templates/workflows/custom-app-compliance.yml`. That workflow calls the reusable workflow in this repository, so future compliance criteria can normally be changed centrally without rewriting every app repository.
+Each Frappe application receives the central caller `templates/workflows/aakvatech-ci.yml`; the router's `compliance` task invokes `custom-app-compliance-reusable.yml`.
 
 ### Manual audit behavior
 
-The compliance workflow runs only when a user manually selects **Actions → Custom App Compliance → Run workflow** in the application repository.
+The compliance audit runs when a user selects **Actions → Aakvatech CI → Run workflow**, choosing task `compliance`.
 
 There are no pull-request triggers, no schedule, and no compliance labels.
 
@@ -325,25 +296,7 @@ A green workflow run means all currently configured compliance requirements were
 
 ### Organization rollout
 
-Use the existing **Mass PR Across Organization** workflow in this repository with:
-
-```
-configs/custom-app-compliance-workflow.json
-```
-
-Recommended rollout:
-
-1. Run the mass-PR workflow with `dry_run=true`.
-2. Review which repositories are detected as eligible Frappe apps.
-3. Run it again with `dry_run=false`.
-4. The automation creates one PR in each eligible repository adding:
-   `.github/workflows/custom-app-compliance.yml`
-5. Review and merge those PRs.
-6. After merge, each repository will show **Custom App Compliance** in its Actions tab and it can be run manually.
-
-Eligible repositories are currently detected by the presence of exactly one `*/hooks.py`.
-
-The caller uses `custom-app-compliance-reusable.yml@stable`. Future rules are adopted after the approved central commit is published to `stable`.
+Use `configs/onboard-central-ci.json` with **Mass PR Across Organization**. Pilot with `dry_run=true` and a single repository, review the PR, and merge it only after verifying the central `stable` channel and required checks. The retained `configs/custom-app-compliance-workflow.json` compatibility campaign now installs the same shared caller rather than a dedicated compliance workflow.
 
 ## Frappe Cloud audit evidence in centralized CI
 

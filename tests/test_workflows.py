@@ -35,32 +35,16 @@ class WorkflowContracts(unittest.TestCase):
                     for scope, permission in callee.get('permissions', {}).items():
                         self.assertEqual(caller['permissions'][scope], permission)
 
-    def test_trigger_contracts(self):
-        expected = {
-            'backport': {'pull_request_target'},
-            'tag-and-promote-from-pr-label': {'pull_request_target'},
-            'label-failed-prs': {'workflow_run', 'workflow_dispatch'},
-            'linter': {'pull_request', 'workflow_dispatch'},
-            'semgrep': {'pull_request', 'workflow_dispatch'},
-            'pre-commit': {'pull_request', 'workflow_dispatch'},
-            'semantic-commits': {'pull_request', 'workflow_dispatch'},
-            'no-raw-sql': {'pull_request', 'push', 'workflow_dispatch'},
-            'modernize-frappe': {'workflow_dispatch'},
-            'custom-app-compliance': {'workflow_dispatch'},
-        }
-        for name, events in expected.items():
-            caller = read_yaml(ROOT / f'templates/workflows/{name}.yml')
-            self.assertEqual(set(caller['on']), events)
-        for name in ['backport', 'tag-and-promote-from-pr-label']:
-            caller = read_yaml(ROOT / f'templates/workflows/{name}.yml')
-            self.assertEqual(caller['on']['pull_request_target']['types'], ['closed', 'labeled'])
-        labels = read_yaml(ROOT / 'templates/workflows/label-failed-prs.yml')
-        self.assertEqual(labels['on']['workflow_run']['workflows'], ['*', '!Label Failed Pull Requests'])
-
-    def test_legacy_template_paths_match(self):
-        for name in ['label-failed-prs', 'modernize-frappe']:
-            self.assertEqual((ROOT / f'templates/{name}.yml').read_text(),
-                             (ROOT / f'templates/workflows/{name}.yml').read_text())
+    def test_single_caller_contract(self):
+        paths = sorted(path.name for path in (ROOT / 'templates/workflows').glob('*.yml'))
+        self.assertEqual(paths, ['aakvatech-ci.yml'])
+        caller = read_yaml(ROOT / 'templates/workflows/aakvatech-ci.yml')
+        self.assertEqual(set(caller['on']), {
+            'pull_request', 'pull_request_target', 'workflow_run', 'workflow_dispatch'
+        })
+        self.assertEqual(
+            caller['on']['pull_request_target']['types'], ['closed', 'labeled']
+        )
 
     def test_all_campaigns_only_distribute_callers(self):
         for path in (ROOT / 'configs').glob('*.json'):
@@ -151,7 +135,7 @@ class MigrationBranches(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('mass_pr', ROOT / 'scripts/mass_pr.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        config = module.load_config(ROOT / 'configs/migrate-reusable-workflows.json')
+        config = module.load_config(ROOT / 'configs/onboard-central-ci.json')
         config['files'] = [{**item, 'source': str(ROOT / item['source'])} for item in config['files']]
         with patch.object(module, 'tree_paths', return_value=[]):
             with self.assertRaisesRegex(ValueError, 'publish stable first'):
@@ -164,7 +148,7 @@ class MigrationBranches(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('mass_pr', ROOT / 'scripts/mass_pr.py')
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        config = module.load_config(ROOT / 'configs/migrate-reusable-workflows.json')
+        config = module.load_config(ROOT / 'configs/onboard-central-ci.json')
         for branch in ['develop', 'version-15-hotfix', 'version-16-hotfix', 'version-16']:
             self.assertTrue(module.branch_matches_config(branch, 'develop', config))
         for branch in ['feature/example', 'automation/old', 'version-16-test']:
