@@ -15,6 +15,6 @@ permissions:
 
 jobs:
   shared:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@main
     with:
       base-sha: ${{ inputs.base-sha }}
