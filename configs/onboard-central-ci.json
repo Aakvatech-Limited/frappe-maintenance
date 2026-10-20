@@ -86,6 +86,6 @@
   "pr_body": "Replaces the app CI, lint and hook files with one trigger, .github/workflows/aakvatech-ci.yml. Checks, workflows and config files now come from Aakvatech-Limited/frappe-maintenance. After merge, developers run: python3 <frappe-maintenance>/scripts/app_config_links.py install --bench <bench>.",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
-    "ref": "stable"
+    "ref": "main"
   }
 }
