@@ -70,15 +70,18 @@ jobs:
       pull-requests: read
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/tag-and-promote-from-pr-label-reusable.yml@stable
 
-  # Runs after a pull_request run finishes; fork PR runs cannot write labels themselves.
+  # GitHub does not let a workflow listen to its own runs, so the label is set at the end of the PR run.
   label-failed-prs:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request'
+    if: always() && github.event_name == 'pull_request'
+    needs: [semantic-commits, pre-commit, semgrep, no-raw-sql, linter]
     permissions:
       actions: read
       contents: read
       issues: write
       pull-requests: write
     uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@stable
+    with:
+      checks-failed: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
 
   # Manual tasks.
   compliance:

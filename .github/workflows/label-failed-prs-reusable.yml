@@ -2,6 +2,11 @@ name: Reusable Label Failed Pull Requests
 
 on:
   workflow_call:
+    inputs:
+      checks-failed:
+        description: Set by a pull_request run with its own check result; labels that PR only.
+        type: string
+        default: ""
 
 permissions:
   actions: read
@@ -76,6 +81,27 @@ jobs:
               } else {
                 core.info(`PR #${prNumber}: no label change required`);
               }
+            }
+
+            const checksFailed = '${{ inputs.checks-failed }}';
+            if (context.eventName === 'pull_request' && checksFailed) {
+              const pr = context.payload.pull_request;
+              const hasLabel = pr.labels.some(item => item.name === label);
+              try {
+                if (checksFailed === 'true' && !hasLabel) {
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, labels: [label]
+                  });
+                } else if (checksFailed !== 'true' && hasLabel) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, name: label
+                  });
+                }
+              } catch (error) {
+                // Runs for fork PRs get a read-only token; the failed checks stay visible on the PR.
+                core.warning(`Cannot change labels on PR #${pr.number}: ${error.message}`);
+              }
+              return;
             }
 
             if (context.eventName === 'workflow_dispatch') {
