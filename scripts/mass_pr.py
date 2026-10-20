@@ -153,7 +153,7 @@ def check_workflow_source(cfg):
         pattern = re.escape(repository) + r"/(\.github/workflows/[^@\s]+)@" + re.escape(ref) + r"(?=\s|$)"
         for workflow in re.findall(pattern, text):
             if workflow not in available:
-                raise ValueError(f"Central workflow {workflow}@{ref} is missing in {repository}; publish stable first")
+                raise ValueError(f"Central workflow {workflow}@{ref} is missing in {repository}; merge it first")
 
 
 def path_requirements_match(paths, patterns, mode):
