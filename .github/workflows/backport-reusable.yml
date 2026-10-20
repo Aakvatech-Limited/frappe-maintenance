@@ -6,7 +6,7 @@ on:
       maintenance-ref:
         description: frappe-maintenance ref for the required-check scripts; match the caller workflow ref.
         type: string
-        default: stable
+        default: main
 
 permissions:
   actions: write
