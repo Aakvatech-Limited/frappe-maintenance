@@ -88,7 +88,7 @@ class DeleteCampaignTests(unittest.TestCase):
 
     def test_source_preflight_ignores_delete_entries(self):
         cfg = self.config()
-        cfg['required_workflow_source'] = {'repository': 'Example/central', 'ref': 'stable'}
+        cfg['required_workflow_source'] = {'repository': 'Example/central', 'ref': 'main'}
         with patch.object(mass_pr, 'tree_paths', return_value=[]):
             mass_pr.check_workflow_source(cfg)
 
