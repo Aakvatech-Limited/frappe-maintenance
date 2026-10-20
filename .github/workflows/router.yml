@@ -20,7 +20,7 @@ jobs:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semantic-commits-reusable.yml@main
     with:
       base-sha: ${{ inputs.base-sha }}
 
@@ -28,7 +28,7 @@ jobs:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@main
     with:
       base-sha: ${{ inputs.base-sha }}
 
@@ -36,7 +36,7 @@ jobs:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semgrep-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/semgrep-reusable.yml@main
     with:
       base-sha: ${{ inputs.base-sha }}
 
@@ -44,13 +44,13 @@ jobs:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/no-raw-sql-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/no-raw-sql-reusable.yml@main
 
   linter:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.task == 'checks')
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/linter-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/linter-reusable.yml@main
 
   # Merged PR automation. These jobs check out base branches only, never PR code.
   backport:
@@ -59,7 +59,7 @@ jobs:
       actions: write
       contents: write
       pull-requests: write
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@main
 
   tag-and-promote:
     if: github.event_name == 'pull_request_target'
@@ -68,7 +68,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/tag-and-promote-from-pr-label-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/tag-and-promote-from-pr-label-reusable.yml@main
 
   # GitHub does not let a workflow listen to its own runs, so the label is set at the end of the PR run.
   label-failed-prs:
@@ -79,7 +79,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@main
     with:
       checks-failed: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
 
@@ -88,15 +88,15 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.task == 'compliance'
     permissions:
       contents: read
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/custom-app-compliance-reusable.yml@main
     with:
-      maintenance-ref: stable
+      maintenance-ref: main
 
   modernize:
     if: github.event_name == 'workflow_dispatch' && inputs.task == 'modernize'
     permissions:
       contents: write
       pull-requests: write
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/modernize-frappe-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/modernize-frappe-reusable.yml@main
     with:
-      maintenance-ref: stable
+      maintenance-ref: main
