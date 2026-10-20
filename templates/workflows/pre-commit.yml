@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   shared:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/pre-commit-reusable.yml@main
     with:
-      maintenance-ref: stable
+      maintenance-ref: main
       base-sha: ${{ inputs.base-sha }}
