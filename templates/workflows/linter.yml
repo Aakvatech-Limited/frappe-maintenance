@@ -10,4 +10,4 @@ permissions:
 
 jobs:
   shared:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/linter-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/linter-reusable.yml@main
