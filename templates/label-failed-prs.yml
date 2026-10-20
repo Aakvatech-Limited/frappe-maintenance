@@ -15,4 +15,4 @@ permissions:
 
 jobs:
   shared:
-    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@stable
+    uses: Aakvatech-Limited/frappe-maintenance/.github/workflows/label-failed-prs-reusable.yml@main
