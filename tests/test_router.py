@@ -56,9 +56,14 @@ class RouterContracts(unittest.TestCase):
         tasks = {match for job in ROUTER['jobs'].values() for match in re.findall(r"inputs\.task == '(\w+)'", job['if'])}
         self.assertEqual(tasks, choices)
 
-    def test_failure_labels_follow_own_pull_request_runs(self):
-        self.assertEqual(TRIGGER['on']['workflow_run']['workflows'], [TRIGGER['name']])
-        self.assertIn("github.event.workflow_run.event == 'pull_request'", ROUTER['jobs']['label-failed-prs']['if'])
+    def test_trigger_does_not_listen_to_itself(self):
+        # GitHub rejects the whole file with "cannot listen to itself".
+        self.assertNotIn('workflow_run', TRIGGER['on'])
+
+    def test_failure_label_runs_after_every_required_check(self):
+        job = ROUTER['jobs']['label-failed-prs']
+        self.assertEqual(set(job['needs']), {check['job'] for check in CHECKS})
+        self.assertTrue(job['if'].startswith('always()'))
 
     def test_required_checks_dispatch_the_trigger(self):
         config = json.loads((ROOT / 'configs/required-checks.json').read_text())
