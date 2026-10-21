@@ -62,6 +62,15 @@ class WorkflowContracts(unittest.TestCase):
             self.assertEqual((ROOT / f'templates/{name}.yml').read_text(),
                              (ROOT / f'templates/workflows/{name}.yml').read_text())
 
+    def test_merge_to_main_publishes_validated_stable(self):
+        publish = read_yaml(ROOT / '.github/workflows/publish-stable.yml')
+        self.assertEqual(publish['on']['push']['branches'], ['main'])
+        self.assertEqual(publish['jobs']['validate']['uses'], './.github/workflows/validate-workflows.yml')
+        self.assertEqual(publish['jobs']['publish']['needs'], 'validate')
+        self.assertIn('force: false', publish['jobs']['publish']['steps'][0]['with']['script'])
+        validate = read_yaml(ROOT / '.github/workflows/validate-workflows.yml')
+        self.assertNotIn('push', validate['on'])
+
     def test_all_campaigns_only_distribute_callers(self):
         for path in (ROOT / 'configs').glob('*.json'):
             config = json.loads(path.read_text())

@@ -58,7 +58,7 @@ Apps in `configs/central-ci-apps.json` keep one file: `.github/workflows/aakvate
 | `workflow_run` of a `pull_request` run | label-failed-prs |
 | Manual run with task `compliance` or `modernize` | compliance, modernize |
 
-To add or change a check or workflow, change `router.yml` or a reusable workflow, merge, and publish `stable`. Apps use it on their next event; no app PR is needed.
+To add or change a check or workflow, change `router.yml` or a reusable workflow in a PR and merge it. **Publish stable workflows** then validates the merged commit and moves `stable` to it. Apps use it on their next event; no app PR is needed.
 
 Config files (`configs/app-config-files.json`) are not committed to apps. CI links them from its frappe-maintenance checkout, and fails when an app commits one of them. On a developer machine, link them and install the git hooks once per bench, and keep the frappe-maintenance clone on `stable`:
 
@@ -66,7 +66,7 @@ Config files (`configs/app-config-files.json`) are not committed to apps. CI lin
 python3 scripts/app_config_links.py install --bench ~/frappe-bench
 ```
 
-To move an app once, add it to `configs/central-ci-apps.json`, publish `stable`, and run **Mass PR Across Organization** with `configs/onboard-central-ci.json`. The PR adds the trigger and deletes the old workflow and config files.
+To move an app once, add it to `configs/central-ci-apps.json`, merge, and run **Mass PR Across Organization** with `configs/onboard-central-ci.json`. The PR adds the trigger and deletes the old workflow and config files.
 
 ## Shared workflows and stable publication
 
@@ -118,7 +118,7 @@ Concurrency is defined only in the implementation. Caller and callee share `gith
 
 1. Merge the central reusable workflow PR into `main`.
 2. In a pilot app (for example `av_tools`), temporarily point callers to `@main` and run the relevant checks. For compliance and modernization, also pass `with: {maintenance-ref: main}` so scripts follow the pilot workflow version. Release/backport behavior should be exercised on a controlled test repository before organization-wide use.
-3. In this repository, run **Publish stable workflows** from `main` and enter the full SHA of the approved, merged commit. It validates that exact commit again, requires it to be an ancestor of `main`, and creates or fast-forwards `stable`. It never force-pushes. Publication does not trigger builds in application repositories.
+3. **Publish stable workflows** runs on each push to `main`. It validates the merged commit again and creates or fast-forwards `stable` to it. It never force-pushes. Publication does not trigger builds in application repositories. To publish again (for example after a failed run), run it manually from `main`.
 4. Run **Mass PR Across Organization** with `configs/migrate-reusable-workflows.json`, `repository=av_tools`, `dry_run=true`. Then use `dry_run=false` to open the pilot migration PR.
 5. Merge the pilot callers and verify the app's Actions runs. The migration retains workflow and internal job names, but reusable calls add an outer job (`shared`), so required status-check contexts can change. Update required checks to the exact names shown on the pilot PR before expanding rollout.
 6. Run the same campaign for the remaining eligible apps. It targets each default branch plus `version-N` and `version-N-hotfix` branches. Review and merge those initial PRs.
@@ -127,13 +127,13 @@ Do not merge `@stable` callers before the channel exists. The workflow campaign 
 
 ### Routine changes
 
-Open one PR here, pass **Validate shared workflows**, merge to `main`, test the pilot against `@main`, then publish the approved commit to `stable`. Migrated apps use the updated implementation on their next event. Changes to triggers, permissions, required inputs, workflow paths, or the selected channel still require caller PRs; preserve backward-compatible inputs whenever possible.
+Open one PR here, pass **Validate shared workflows**, get a review and merge to `main`. `stable` moves to the merged commit automatically, and migrated apps use the updated implementation on their next event. For a risky change, test it before you merge: point a pilot app caller at the PR branch (and set `maintenance-ref` to the same branch). Changes to triggers, permissions, required inputs, workflow paths, or the selected channel still require caller PRs; preserve backward-compatible inputs whenever possible.
 
 Production compliance and modernization callers explicitly set `maintenance-ref: stable`. The input defaults to `main` for compatibility with previously installed `@main` callers and supports pilots and fixed-ref callers; use the same ref as the reusable workflow. No scripts are fetched from `main` by production callers. A moving channel intentionally tracks approved changes rather than guaranteeing immutable run reproduction; a fixed SHA caller plus matching `maintenance-ref` provides that when needed.
 
-Restrict writes to `main` and `stable` through repository rulesets. Allow the publication workflow's approved actor to update `stable`; if the ruleset blocks `GITHUB_TOKEN`, configure that policy before publishing. GitHub workflow YAML cannot itself configure repository protection.
+Restrict writes to `main` and `stable` through repository rulesets. Allow the publication workflow (`GITHUB_TOKEN`) to update `stable`; if the ruleset blocks `GITHUB_TOKEN`, configure that policy before publishing. GitHub workflow YAML cannot itself configure repository protection.
 
-To roll back, revert the faulty central change on `main`, validate and publish the resulting new commit. This keeps `stable` updates fast-forward-only.
+To roll back, merge a revert of the faulty central change to `main`. The revert is published like any other merge, and `stable` updates stay fast-forward-only.
 
 ### Local validation
 
@@ -269,8 +269,8 @@ for other eligible Frappe apps. The campaign includes default branches and
 `version-N` / `version-N-hotfix` branches. All app PRs must be reviewed and
 merged; running the campaign alone does not deploy its changes.
 
-**Before rollout:** publish an approved central commit containing backport
-attempt reporting to the `stable` channel, check repository Actions permission
+**Before rollout:** merge the central commit containing backport attempt
+reporting, so that it is on the `stable` channel, check repository Actions permission
 to call reusable workflows and create PRs, and validate required status-check
 contexts in a pilot. Backport reconciler setup remains centralized in
 `frappe-maintenance` and does not need a per-app scheduled workflow.
@@ -343,12 +343,12 @@ Recommended rollout:
 
 Eligible repositories are currently detected by the presence of exactly one `*/hooks.py`.
 
-The caller uses `custom-app-compliance-reusable.yml@stable`. Future rules are adopted after the approved central commit is published to `stable`.
+The caller uses `custom-app-compliance-reusable.yml@stable`. Future rules are adopted when the central PR is merged, because each merge is published to `stable`.
 
 ## Frappe Cloud audit evidence in centralized CI
 
 The reusable `semgrep-reusable.yml` runs a differential Semgrep error gate and a **full-repository finding export**. It uploads `semgrep-finding-evidence/semgrep-full.json` (90-day retention) and writes severity totals to the Actions job summary. The export and upload also run when the error gate fails. Unlike a PR-only differential check, the full export includes pre-existing findings, enabling source-to-finding reconciliation after each bulk remediation.
 
-**Rollout:** Merge the central PR to `main`, pilot an app caller pointing at `@main`, publish the approved commit to `stable` through **Publish stable workflows**, then allow app repositories already calling `@stable` to use it. Local copied workflows, such as those in `csf_tz`, do not inherit this improvement until migrated to the reusable caller.
+**Rollout:** Merge the central PR to `main`. **Publish stable workflows** moves `stable` to it, and app repositories already calling `@stable` use it on their next run. Local copied workflows, such as those in `csf_tz`, do not inherit this improvement until migrated to the reusable caller.
 
 The JSON is a new-scan snapshot, **not** the missing original 497-finding report. Capture the original baseline separately. Missing scanner installations or missing artifacts fail the workflow rather than being treated as zero findings. This automation generates reports; it does not automatically change application code or fix old findings.
