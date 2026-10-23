@@ -26,7 +26,7 @@ class WorkflowContracts(unittest.TestCase):
                 for job in caller['jobs'].values():
                     self.assertNotIn('steps', job)
                     match = re.fullmatch(
-                        r'Aakvatech-Limited/frappe-maintenance/(.github/workflows/[^/]+)@stable',
+                        r'Aakvatech-Limited/frappe-maintenance/(.github/workflows/[^/]+)@main',
                         job['uses'],
                     )
                     self.assertIsNotNone(match)
@@ -34,6 +34,16 @@ class WorkflowContracts(unittest.TestCase):
                     self.assertIn('workflow_call', callee['on'])
                     for scope, permission in callee.get('permissions', {}).items():
                         self.assertEqual(caller['permissions'][scope], permission)
+
+    def test_central_workflows_only_use_main(self):
+        paths = [*(ROOT / '.github/workflows').glob('*.yml'), *(ROOT / 'templates').rglob('*.yml')]
+        for path in paths:
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                for ref in re.findall(r'Aakvatech-Limited/frappe-maintenance/\S+@(\S+)', text):
+                    self.assertEqual(ref, 'main')
+                for ref in re.findall(r'maintenance-ref: (\S+)', text):
+                    self.assertEqual(ref, 'main')
 
     def test_trigger_contracts(self):
         expected = {
@@ -61,15 +71,6 @@ class WorkflowContracts(unittest.TestCase):
         for name in ['label-failed-prs', 'modernize-frappe']:
             self.assertEqual((ROOT / f'templates/{name}.yml').read_text(),
                              (ROOT / f'templates/workflows/{name}.yml').read_text())
-
-    def test_merge_to_main_publishes_validated_stable(self):
-        publish = read_yaml(ROOT / '.github/workflows/publish-stable.yml')
-        self.assertEqual(publish['on']['push']['branches'], ['main'])
-        self.assertEqual(publish['jobs']['validate']['uses'], './.github/workflows/validate-workflows.yml')
-        self.assertEqual(publish['jobs']['publish']['needs'], 'validate')
-        self.assertIn('force: false', publish['jobs']['publish']['steps'][0]['with']['script'])
-        validate = read_yaml(ROOT / '.github/workflows/validate-workflows.yml')
-        self.assertNotIn('push', validate['on'])
 
     def test_all_campaigns_only_distribute_callers(self):
         for path in (ROOT / 'configs').glob('*.json'):
@@ -163,7 +164,7 @@ class MigrationBranches(unittest.TestCase):
         config = module.load_config(ROOT / 'configs/migrate-reusable-workflows.json')
         config['files'] = [{**item, 'source': str(ROOT / item['source'])} for item in config['files']]
         with patch.object(module, 'tree_paths', return_value=[]):
-            with self.assertRaisesRegex(ValueError, 'publish stable first'):
+            with self.assertRaisesRegex(ValueError, 'merge it first'):
                 module.check_workflow_source(config)
         paths = [str(path.relative_to(ROOT)) for path in (ROOT / '.github/workflows').glob('*-reusable.yml')]
         with patch.object(module, 'tree_paths', return_value=paths):

@@ -62,11 +62,11 @@
   "work_branch_prefix": "automation/central-workflow-callers",
   "commit_message": "chore: use central reusable workflows",
   "pr_title": "chore: use central reusable workflows",
-  "pr_body": "Replaces copied workflow implementations with lightweight callers to frappe-maintenance@stable. Event triggers and permissions remain local; routine implementation updates are published centrally without further app PRs. Review required check names after the first run. Requires the central stable branch to be published before merging.",
+  "pr_body": "Replaces copied workflow implementations with lightweight callers to frappe-maintenance@main. Event triggers and permissions remain local; routine implementation updates merged centrally apply without further app PRs. Review required check names after the first run.",
   "include_default_branch": true,
   "branch_include_regex": "^version-\\d+(?:-hotfix)?$",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
-    "ref": "stable"
+    "ref": "main"
   }
 }

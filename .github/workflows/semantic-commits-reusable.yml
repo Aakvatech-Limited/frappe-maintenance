@@ -6,7 +6,7 @@ on:
       maintenance-ref:
         description: frappe-maintenance ref for config files; match the caller workflow ref.
         type: string
-        default: stable
+        default: main
       base-sha:
         description: Check only changes after this commit. Pull requests use their base commit.
         type: string

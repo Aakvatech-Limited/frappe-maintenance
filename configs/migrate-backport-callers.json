@@ -19,9 +19,9 @@
   "work_branch_prefix": "automation/central-backport-caller",
   "commit_message": "ci: use centrally maintained backport workflow",
   "pr_title": "ci: migrate backport to frappe-maintenance reusable workflow",
-  "pr_body": "Replace the standalone Backport implementation with a lightweight caller to Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@stable. Preserves pull_request_target closed/labeled triggers and permissions. Central PR #9 attempt reporting is on stable once that central PR is merged. Review status check contexts and Actions policies before merging.",
+  "pr_body": "Replace the standalone Backport implementation with a lightweight caller to Aakvatech-Limited/frappe-maintenance/.github/workflows/backport-reusable.yml@main. Preserves pull_request_target closed/labeled triggers and permissions. Central PR #9 attempt reporting is available once that central PR is merged to main. Review status check contexts and Actions policies before merging.",
   "required_workflow_source": {
     "repository": "Aakvatech-Limited/frappe-maintenance",
-    "ref": "stable"
+    "ref": "main"
   }
 }

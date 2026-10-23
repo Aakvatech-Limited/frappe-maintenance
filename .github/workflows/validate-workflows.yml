@@ -1,8 +1,9 @@
 name: Validate shared workflows
 
 on:
-  # Pushes to main are validated by publish-stable.yml before stable moves.
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
   workflow_call:
     inputs:
